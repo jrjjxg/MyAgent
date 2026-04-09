@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xg.platform.api.persistence.mybatisplus.mapper.ResearchTaskSnapshotMapper">
+
+    <select id="findByTask" resultType="com.xg.platform.api.persistence.mybatisplus.entity.ResearchTaskSnapshotEntity">
+        select task_id, user_id, thread_id, phase, iteration_no, summary, converged, payload_json, updated_at
+        from research_task_snapshots
+        where user_id = #{userId}
+          and thread_id = #{threadId}
+          and task_id = #{taskId}
+    </select>
+
+    <insert id="upsert">
+        insert into research_task_snapshots
+        (task_id, user_id, thread_id, phase, iteration_no, summary, converged, payload_json, updated_at)
+        values (#{snapshot.taskId}, #{snapshot.userId}, #{snapshot.threadId}, #{snapshot.phase},
+                #{snapshot.iterationNo}, #{snapshot.summary}, #{snapshot.converged}, #{snapshot.payloadJson},
+                #{snapshot.updatedAt})
+        on conflict (task_id) do update set
+            user_id = excluded.user_id,
+            thread_id = excluded.thread_id,
+            phase = excluded.phase,
+            iteration_no = excluded.iteration_no,
+            summary = excluded.summary,
+            converged = excluded.converged,
+            payload_json = excluded.payload_json,
+            updated_at = excluded.updated_at
+    </insert>
+</mapper>

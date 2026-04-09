@@ -1,0 +1,14 @@
+{
+  "mcpServers": {},
+  "skills": {
+    "docs.paper-review": {
+      "enabled": true
+    },
+    "docs.compare-papers": {
+      "enabled": true
+    },
+    "docs.web-research": {
+      "enabled": true
+    }
+  }
+}

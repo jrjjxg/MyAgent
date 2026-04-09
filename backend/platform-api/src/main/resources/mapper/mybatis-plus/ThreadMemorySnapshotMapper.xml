@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xg.platform.api.persistence.mybatisplus.mapper.ThreadMemorySnapshotMapper">
+
+    <select id="findByThread" resultType="com.xg.platform.api.persistence.mybatisplus.entity.ThreadMemorySnapshotEntity">
+        select thread_id, user_id, summary, last_compacted_message_id, pending_historical_messages_json,
+               recent_end_message_id, recent_window_size, active_draft_id, active_task_id, task_stage,
+               active_skill_ids_json, updated_at
+        from thread_memory_snapshots
+        where user_id = #{userId} and thread_id = #{threadId}
+    </select>
+
+    <insert id="upsert">
+        insert into thread_memory_snapshots
+        (thread_id, user_id, summary, last_compacted_message_id, pending_historical_messages_json,
+         recent_end_message_id, recent_window_size, active_draft_id, active_task_id, task_stage,
+         active_skill_ids_json, updated_at)
+        values (#{snapshot.threadId}, #{snapshot.userId}, #{snapshot.summary}, #{snapshot.lastCompactedMessageId},
+                CAST(#{snapshot.pendingHistoricalMessagesJson} AS jsonb), #{snapshot.recentEndMessageId},
+                #{snapshot.recentWindowSize}, #{snapshot.activeDraftId}, #{snapshot.activeTaskId},
+                #{snapshot.taskStage}, CAST(#{snapshot.activeSkillIdsJson} AS jsonb), #{snapshot.updatedAt})
+        on conflict (thread_id) do update set
+            user_id = excluded.user_id,
+            summary = excluded.summary,
+            last_compacted_message_id = excluded.last_compacted_message_id,
+            pending_historical_messages_json = excluded.pending_historical_messages_json,
+            recent_end_message_id = excluded.recent_end_message_id,
+            recent_window_size = excluded.recent_window_size,
+            active_draft_id = excluded.active_draft_id,
+            active_task_id = excluded.active_task_id,
+            task_stage = excluded.task_stage,
+            active_skill_ids_json = excluded.active_skill_ids_json,
+            updated_at = excluded.updated_at
+    </insert>
+</mapper>

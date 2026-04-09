@@ -1,0 +1,3 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.xg.platform.api.config.DataSourceEnvironmentPostProcessor,\
+com.xg.platform.api.config.RocketMqEnvironmentPostProcessor

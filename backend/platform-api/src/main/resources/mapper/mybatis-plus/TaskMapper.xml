@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xg.platform.api.persistence.mybatisplus.mapper.TaskMapper">
+
+    <sql id="taskColumns">
+        task_id, user_id, workspace_id, thread_id, document_id, agent_id, kind, status, title, summary,
+        stage, progress, linked_draft_id, result_artifact_id, attempt_count, max_attempts, last_error,
+        created_at, updated_at, started_at, completed_at
+    </sql>
+
+    <select id="insertQueuedIngestIfAbsent" resultType="com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity">
+        insert into tasks
+        (<include refid="taskColumns"/>)
+        values (#{task.taskId}, #{task.userId}, #{task.workspaceId}, #{task.threadId}, #{task.documentId},
+                #{task.agentId}, #{task.kind}, #{task.status}, #{task.title}, #{task.summary}, #{task.stage},
+                #{task.progress}, #{task.linkedDraftId}, #{task.resultArtifactId}, #{task.attemptCount},
+                #{task.maxAttempts}, #{task.lastError}, #{task.createdAt}, #{task.updatedAt},
+                #{task.startedAt}, #{task.completedAt})
+        on conflict (user_id, workspace_id, document_id, kind) do nothing
+        returning <include refid="taskColumns"/>
+    </select>
+
+    <select id="selectByUserAndTaskId" resultType="com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity">
+        select <include refid="taskColumns"/>
+        from tasks
+        where user_id = #{userId}
+          and task_id = #{taskId}
+    </select>
+
+    <select id="listByWorkspace" resultType="com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity">
+        select <include refid="taskColumns"/>
+        from tasks
+        where user_id = #{userId}
+          and workspace_id = #{workspaceId}
+        <if test="kind != null and kind != ''">
+            and kind = #{kind}
+        </if>
+        order by updated_at desc
+    </select>
+
+    <select id="findIngestTaskByDocument" resultType="com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity">
+        select <include refid="taskColumns"/>
+        from tasks
+        where user_id = #{userId}
+          and workspace_id = #{workspaceId}
+          and document_id = #{documentId}
+          and kind = 'INGEST'
+        limit 1
+    </select>
+
+    <update id="claimQueuedOrStaleRunningTask">
+        update tasks
+        set status = 'RUNNING',
+            summary = coalesce(#{summary}, summary),
+            stage = coalesce(#{stage}, stage),
+            progress = coalesce(#{progress,jdbcType=INTEGER}, progress),
+            last_error = null,
+            updated_at = #{updatedAt},
+            started_at = #{updatedAt},
+            completed_at = null
+        where user_id = #{userId}
+          and task_id = #{taskId}
+          and (
+                status = 'QUEUED'
+                or (status = 'RUNNING' and (started_at is null or started_at &lt;= #{staleRunningBefore}))
+              )
+    </update>
+</mapper>
