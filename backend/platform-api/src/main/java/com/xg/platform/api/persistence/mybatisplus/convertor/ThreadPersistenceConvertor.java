@@ -1,8 +1,8 @@
 package com.xg.platform.api.persistence.mybatisplus.convertor;
 
 import com.xg.platform.api.persistence.mybatisplus.entity.ThreadEntity;
-import com.xg.platform.contracts.thread.ThreadRecord;
-import com.xg.platform.contracts.thread.ThreadStatus;
+import com.xg.platform.contracts.workspace.ThreadRecord;
+import com.xg.platform.contracts.workspace.ThreadStatus;
 
 public final class ThreadPersistenceConvertor {
 

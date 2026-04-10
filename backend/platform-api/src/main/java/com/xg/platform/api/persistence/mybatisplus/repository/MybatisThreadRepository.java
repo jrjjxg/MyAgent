@@ -4,11 +4,11 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.convertor.ThreadPersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.entity.ThreadEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.ThreadMapper;
-import com.xg.platform.contracts.thread.ThreadRecord;
-import com.xg.platform.contracts.thread.ThreadStatus;
-import com.xg.platform.contracts.validation.PlatformIds;
-import com.xg.platform.runtime.ThreadRepository;
-import com.xg.platform.runtime.WorkspaceRepository;
+import com.xg.platform.contracts.workspace.ThreadRecord;
+import com.xg.platform.contracts.workspace.ThreadStatus;
+import com.xg.platform.contracts.shared.validation.PlatformIds;
+import com.xg.platform.workspace.port.ThreadRepository;
+import com.xg.platform.workspace.port.WorkspaceRepository;
 
 import java.time.Instant;
 import java.util.List;

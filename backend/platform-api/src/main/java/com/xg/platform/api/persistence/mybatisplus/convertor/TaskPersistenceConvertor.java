@@ -1,9 +1,9 @@
 package com.xg.platform.api.persistence.mybatisplus.convertor;
 
 import com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.contracts.task.TaskStatus;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.contracts.shared.task.TaskStatus;
 
 public final class TaskPersistenceConvertor {
 

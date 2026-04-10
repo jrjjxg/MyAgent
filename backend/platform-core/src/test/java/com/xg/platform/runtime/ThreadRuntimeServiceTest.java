@@ -1,7 +1,7 @@
 package com.xg.platform.runtime;
 
-import com.xg.platform.contracts.thread.ThreadRecord;
-import com.xg.platform.contracts.thread.ThreadStatus;
+import com.xg.platform.contracts.workspace.ThreadRecord;
+import com.xg.platform.contracts.workspace.ThreadStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -11,12 +11,14 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.port.ThreadRepository;
 
-class ThreadRuntimeServiceTest {
+class ThreadServiceTest {
 
     @Test
     void delegatesThreadLifecycleToRepository() {
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
 
         ThreadRecord created = threadRuntimeService.createThread("user-1", "workspace-1", "Research task");
         List<ThreadRecord> threads = threadRuntimeService.listThreads("user-1");

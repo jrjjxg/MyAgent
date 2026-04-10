@@ -1,7 +1,7 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
 
 import java.io.Serializable;
 import java.util.ArrayList;

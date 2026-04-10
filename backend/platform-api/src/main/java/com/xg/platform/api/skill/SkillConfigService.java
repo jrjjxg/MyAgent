@@ -3,10 +3,10 @@ package com.xg.platform.api.skill;
 import com.xg.platform.contracts.skill.SkillStatusRecord;
 import com.xg.platform.contracts.skill.SkillStatusResponse;
 import com.xg.platform.contracts.skill.UpdateSkillConfigRequest;
-import com.xg.platform.tools.SkillConfigStore;
-import com.xg.platform.tools.SkillDefinition;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.SkillUserConfig;
+import com.xg.platform.skill.port.SkillConfigStore;
+import com.xg.platform.skill.domain.SkillDefinition;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.skill.domain.SkillUserConfig;
 import org.springframework.core.env.Environment;
 
 import java.util.ArrayList;

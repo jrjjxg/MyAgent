@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.convertor.MessagePersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.entity.MessageEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.MessageMapper;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.runtime.MessageRepository;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.conversation.port.MessageRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;

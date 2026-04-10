@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.xg.platform.agent.core.AgentGraphMessage;
 import com.xg.platform.agent.core.AgentGraphMessageType;
 import com.xg.platform.agent.core.AgentModelStep;
-import com.xg.platform.contracts.message.RunEventType;
+import com.xg.platform.contracts.shared.event.RunEventType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -62,7 +62,7 @@ class ChatClientAgentTurnExecutionSupportTest {
     }
 
     @Test
-    void matchesLegacyForGeminiToolBufferedOutput() {
+    void matchesLegacyForGeminiToolStreamingOutput() {
         SpringAiAgentTurnExecutionSupport legacy = createLegacySupport(
                 new AgentTurnExecutionSupportTestSupport.TrackingChatModel(List.of("hello ", "world"), "hello world"),
                 "gemini-3-pro-preview"
@@ -143,7 +143,7 @@ class ChatClientAgentTurnExecutionSupportTest {
     }
 
     @Test
-    void matchesLegacyForSingleStepAgentStepStream() {
+    void matchesLegacyForSingleStepNativeThinkingStream() {
         SpringAiAgentTurnExecutionSupport legacy = createLegacySupport(
                 new AgentTurnExecutionSupportTestSupport.ToolCallingChatModel("tool plan", "call-1", "web_search", "{\"query\":\"hi\"}")
         );
@@ -189,11 +189,7 @@ class ChatClientAgentTurnExecutionSupportTest {
         assertThat(chatClientEmitter.text()).isEmpty();
         assertThat(chatClientEmitter.text()).containsExactlyElementsOf(legacyEmitter.text());
         assertThat(chatClientEmitter.eventTypes()).containsExactlyElementsOf(legacyEmitter.eventTypes());
-        assertThat(chatClientEmitter.eventTypes()).contains(
-                RunEventType.AGENT_STEP_STARTED,
-                RunEventType.AGENT_STEP_DELTA,
-                RunEventType.AGENT_STEP_COMPLETED
-        );
+        assertThat(chatClientEmitter.eventTypes()).isEmpty();
         assertThat(chatClientEmitter.eventPayloads()).containsExactlyElementsOf(legacyEmitter.eventPayloads());
     }
 
@@ -255,7 +251,7 @@ class ChatClientAgentTurnExecutionSupportTest {
         assertThat(chatClientResult.content()).isEqualTo(legacyResult.content());
         assertThat(chatClientEmitter.eventTypes()).containsExactlyElementsOf(legacyEmitter.eventTypes());
         assertThat(chatClientEmitter.eventPayloads()).containsExactlyElementsOf(legacyEmitter.eventPayloads());
-        assertThat(chatClientEmitter.eventTypes()).contains(RunEventType.MODEL_THINKING, RunEventType.AGENT_STEP_COMPLETED);
+        assertThat(chatClientEmitter.eventTypes()).contains(RunEventType.MODEL_THINKING);
     }
 
     @Test
@@ -293,7 +289,7 @@ class ChatClientAgentTurnExecutionSupportTest {
         Path imagePath = tempDir.resolve("receipt.png");
         Files.write(imagePath, new byte[]{1, 2, 3});
 
-        String legacyResult = legacy.runModelLoop("openai", AgentTurnExecutionSupportTestSupport.sampleRequest("openai", List.of(new com.xg.platform.contracts.message.ThreadFileReference(
+        String legacyResult = legacy.runModelLoop("openai", AgentTurnExecutionSupportTestSupport.sampleRequest("openai", List.of(new com.xg.platform.contracts.conversation.ThreadFileReference(
                 "receipt.png",
                 "uploads/receipt.png",
                 imagePath.toString(),
@@ -301,7 +297,7 @@ class ChatClientAgentTurnExecutionSupportTest {
                 3
         ))), "system prompt", List.of(), delta -> {
         });
-        String chatClientResult = chatClient.runModelLoop("openai", AgentTurnExecutionSupportTestSupport.sampleRequest("openai", List.of(new com.xg.platform.contracts.message.ThreadFileReference(
+        String chatClientResult = chatClient.runModelLoop("openai", AgentTurnExecutionSupportTestSupport.sampleRequest("openai", List.of(new com.xg.platform.contracts.conversation.ThreadFileReference(
                 "receipt.png",
                 "uploads/receipt.png",
                 imagePath.toString(),

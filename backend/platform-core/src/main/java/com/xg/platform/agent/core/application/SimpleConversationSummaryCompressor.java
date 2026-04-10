@@ -1,17 +1,25 @@
 package com.xg.platform.agent.core.application;
 
-import com.xg.platform.contracts.message.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
 
 import java.util.List;
 
 public class SimpleConversationSummaryCompressor implements ConversationSummaryCompressor {
 
+    private static final int DEFAULT_MAX_LINES = 8;
+    private static final int DEFAULT_MAX_CHARS_PER_LINE = 120;
+    private static final int DEFAULT_MAX_TOTAL_CHARS = 900;
+
     private final int maxLines;
     private final int maxCharsPerLine;
     private final int maxTotalChars;
 
-    public SimpleConversationSummaryCompressor() {
-        this(8, 120, 900);
+    public static SimpleConversationSummaryCompressor defaults() {
+        return new SimpleConversationSummaryCompressor(
+                DEFAULT_MAX_LINES,
+                DEFAULT_MAX_CHARS_PER_LINE,
+                DEFAULT_MAX_TOTAL_CHARS
+        );
     }
 
     public SimpleConversationSummaryCompressor(int maxLines,

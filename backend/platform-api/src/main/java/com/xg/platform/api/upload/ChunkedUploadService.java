@@ -1,17 +1,17 @@
 package com.xg.platform.api.upload;
 
 import com.xg.platform.agent.core.DocumentIngestService;
-import com.xg.platform.contracts.artifact.CompleteUploadSessionResponse;
-import com.xg.platform.contracts.artifact.CreateUploadSessionRequest;
-import com.xg.platform.contracts.artifact.UploadResponse;
-import com.xg.platform.contracts.artifact.UploadSessionStatusResponse;
-import com.xg.platform.contracts.validation.PlatformIds;
+import com.xg.platform.contracts.workspace.CompleteUploadSessionResponse;
+import com.xg.platform.contracts.workspace.CreateUploadSessionRequest;
+import com.xg.platform.contracts.workspace.UploadResponse;
+import com.xg.platform.contracts.workspace.UploadSessionStatusResponse;
+import com.xg.platform.contracts.shared.validation.PlatformIds;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.runtime.WorkspaceRuntimeService;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.UploadService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.application.WorkspaceService;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.UploadService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -23,8 +23,8 @@ import java.util.UUID;
 
 public class ChunkedUploadService {
 
-    private final ThreadRuntimeService threadRuntimeService;
-    private final WorkspaceRuntimeService workspaceRuntimeService;
+    private final ThreadService threadRuntimeService;
+    private final WorkspaceService workspaceRuntimeService;
     private final WorkspaceManager workspaceManager;
     private final UploadService uploadService;
     private final ArtifactService artifactService;
@@ -32,8 +32,8 @@ public class ChunkedUploadService {
     private final ChunkUploadStateStore stateStore;
     private final int maxChunkSizeBytes;
 
-    public ChunkedUploadService(ThreadRuntimeService threadRuntimeService,
-                                WorkspaceRuntimeService workspaceRuntimeService,
+    public ChunkedUploadService(ThreadService threadRuntimeService,
+                                WorkspaceService workspaceRuntimeService,
                                 WorkspaceManager workspaceManager,
                                 UploadService uploadService,
                                 ArtifactService artifactService,

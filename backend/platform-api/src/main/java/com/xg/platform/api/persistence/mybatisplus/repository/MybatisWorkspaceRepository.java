@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.convertor.WorkspacePersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.entity.WorkspaceEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.WorkspaceMapper;
-import com.xg.platform.contracts.validation.PlatformIds;
+import com.xg.platform.contracts.shared.validation.PlatformIds;
 import com.xg.platform.contracts.workspace.WorkspaceRecord;
 import com.xg.platform.contracts.workspace.WorkspaceStatus;
-import com.xg.platform.runtime.WorkspaceRepository;
+import com.xg.platform.workspace.port.WorkspaceRepository;
 
 import java.time.Instant;
 import java.util.List;

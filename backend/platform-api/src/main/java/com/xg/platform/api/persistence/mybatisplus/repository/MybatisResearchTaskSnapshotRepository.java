@@ -6,7 +6,7 @@ import com.xg.platform.api.persistence.mybatisplus.convertor.ResearchTaskSnapsho
 import com.xg.platform.api.persistence.mybatisplus.entity.ResearchTaskSnapshotEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.ResearchTaskSnapshotMapper;
 import com.xg.platform.contracts.research.ResearchTaskSnapshotRecord;
-import com.xg.platform.runtime.ResearchTaskSnapshotRepository;
+import com.xg.platform.research.port.ResearchTaskSnapshotRepository;
 
 import java.util.Optional;
 

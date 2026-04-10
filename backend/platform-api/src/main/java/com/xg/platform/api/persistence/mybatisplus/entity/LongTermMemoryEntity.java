@@ -1,11 +1,14 @@
 package com.xg.platform.api.persistence.mybatisplus.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.xg.platform.api.persistence.mybatisplus.typehandler.JsonbStringTypeHandler;
+import org.apache.ibatis.type.JdbcType;
 
 import java.time.Instant;
 
-@TableName("long_term_memory")
+@TableName(value = "long_term_memory", autoResultMap = true)
 public class LongTermMemoryEntity {
 
     @TableId("memory_id")
@@ -15,6 +18,8 @@ public class LongTermMemoryEntity {
     private String canonicalKey;
     private String title;
     private String content;
+    @TableField(value = "value_json", jdbcType = JdbcType.OTHER, typeHandler = JsonbStringTypeHandler.class)
+    private String valueJson;
     private String sourceThreadId;
     private String sourceMessageId;
     private String sourceTaskId;
@@ -68,6 +73,14 @@ public class LongTermMemoryEntity {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getValueJson() {
+        return valueJson;
+    }
+
+    public void setValueJson(String valueJson) {
+        this.valueJson = valueJson;
     }
 
     public String getSourceThreadId() {

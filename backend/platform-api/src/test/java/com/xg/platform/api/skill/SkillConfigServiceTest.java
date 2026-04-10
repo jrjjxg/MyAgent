@@ -2,10 +2,10 @@ package com.xg.platform.api.skill;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.contracts.skill.UpdateSkillConfigRequest;
-import com.xg.platform.tools.McpServerRegistry;
-import com.xg.platform.tools.SkillConfigStore;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.SkillUserConfig;
+import com.xg.platform.tooling.application.McpServerRegistry;
+import com.xg.platform.skill.port.SkillConfigStore;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.skill.domain.SkillUserConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;

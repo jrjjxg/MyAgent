@@ -1,7 +1,7 @@
 package com.xg.platform.agent.core.application;
 
-import com.xg.platform.runtime.MemoryEventPayload;
-import com.xg.platform.runtime.MemoryEventProcessor;
+import com.xg.platform.memory.port.MemoryEventPayload;
+import com.xg.platform.memory.port.MemoryEventProcessor;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

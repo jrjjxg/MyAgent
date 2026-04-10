@@ -6,12 +6,12 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadMemo
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadRepository;
 import com.xg.platform.contracts.memory.CachedThreadMemoryRecord;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
-import com.xg.platform.runtime.ThreadRuntimeService;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
+import com.xg.platform.workspace.application.ThreadService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -31,7 +31,7 @@ class ConversationMemoryServiceTest {
         MessageRecord message1 = context.appendMessage("m-1", MessageRole.USER, "hello");
         MessageRecord message2 = context.appendMessage("m-2", MessageRole.ASSISTANT, "world");
         Instant updatedAt = Instant.now();
-        context.threadMemorySnapshotRepository.save(context.userId, new ThreadMemorySnapshotRecord(
+        context.threadMemorySnapshotRepository.save(context.userId, ThreadMemorySnapshotRecord.withoutActiveSkillIds(
                 context.threadId,
                 context.userId,
                 "cached full summary",
@@ -76,7 +76,7 @@ class ConversationMemoryServiceTest {
         MessageRecord message1 = context.appendMessage("m-1", MessageRole.USER, "first");
         MessageRecord message2 = context.appendMessage("m-2", MessageRole.ASSISTANT, "second");
         context.appendMessage("m-3", MessageRole.USER, "third");
-        context.threadMemorySnapshotRepository.save(context.userId, new ThreadMemorySnapshotRecord(
+        context.threadMemorySnapshotRepository.save(context.userId, ThreadMemorySnapshotRecord.withoutActiveSkillIds(
                 context.threadId,
                 context.userId,
                 "persisted summary",
@@ -109,7 +109,7 @@ class ConversationMemoryServiceTest {
         context.appendMessage("m-1", MessageRole.USER, "first");
         context.appendMessage("m-2", MessageRole.ASSISTANT, "second");
         MessageRecord message3 = context.appendMessage("m-3", MessageRole.USER, "third");
-        context.threadMemorySnapshotRepository.save(context.userId, new ThreadMemorySnapshotRecord(
+        context.threadMemorySnapshotRepository.save(context.userId, ThreadMemorySnapshotRecord.withoutActiveSkillIds(
                 context.threadId,
                 context.userId,
                 "fresh summary",
@@ -164,9 +164,9 @@ class ConversationMemoryServiceTest {
         private final ConversationMemoryService conversationMemoryService;
 
         private TestContext(int windowSize) {
-            ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+            ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
             this.threadId = threadRuntimeService.createThread(userId, "workspace-1", "Thread").threadId();
-            ShortTermMemoryProjectionService projectionService = new ShortTermMemoryProjectionService(
+            ShortTermMemoryProjectionService projectionService = ShortTermMemoryProjectionService.withDefaultCompressor(
                     messageRepository,
                     threadMemorySnapshotRepository,
                     threadMemoryViewCache,

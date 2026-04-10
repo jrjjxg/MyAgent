@@ -10,18 +10,18 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryResearchDr
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryRunEventRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadRepository;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.PostMessageRequest;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.contracts.message.RunEvent;
-import com.xg.platform.graph.ResearchScopingState;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.PostMessageRequest;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.contracts.shared.event.RunEvent;
+import com.xg.platform.research.runtime.ResearchScopingState;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.research.application.ResearchDraftScopingService;
 
-class ResearchScopingFlowServiceTest {
+class ResearchDraftScopingServiceTest {
 
     @TempDir
     Path tempDir;
@@ -44,7 +45,7 @@ class ResearchScopingFlowServiceTest {
         Map<String, Object> state = new HashMap<>(Map.of(
                 ResearchScopingState.USER_ID, "user-1",
                 ResearchScopingState.THREAD_ID, harness.threadId(),
-                ResearchScopingState.REQUEST, new PostMessageRequest("Research the AI chip market", InteractionMode.DEEP_RESEARCH, "gemini"),
+                ResearchScopingState.REQUEST, PostMessageRequest.of("Research the AI chip market", InteractionMode.DEEP_RESEARCH, "gemini"),
                 ResearchScopingState.MEMORY_VIEW, harness.memoryView(),
                 ResearchScopingState.SESSION_SUMMARY, harness.memoryView().summary(),
                 ResearchScopingState.LONG_TERM_MEMORY, "Prefers concise reports"
@@ -54,7 +55,7 @@ class ResearchScopingFlowServiceTest {
         state.putAll(harness.flowService().runScopingFrame(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Research the AI chip market", InteractionMode.DEEP_RESEARCH, "gemini"),
+                PostMessageRequest.of("Research the AI chip market", InteractionMode.DEEP_RESEARCH, "gemini"),
                 harness.memoryView(),
                 "Prefers concise reports",
                 null,
@@ -72,7 +73,7 @@ class ResearchScopingFlowServiceTest {
         assertThat(draft.planSteps()).hasSize(3);
         assertThat(draft.lastAssistantMessageId()).isNotBlank();
         assertThat(messages).hasSize(2);
-        assertThat(messages).extracting(MessageRecord::role).containsExactly(com.xg.platform.contracts.message.MessageRole.USER, com.xg.platform.contracts.message.MessageRole.ASSISTANT);
+        assertThat(messages).extracting(MessageRecord::role).containsExactly(com.xg.platform.contracts.conversation.MessageRole.USER, com.xg.platform.contracts.conversation.MessageRole.ASSISTANT);
         assertThat(emitted).extracting(RunEvent::eventType).contains(
                 "message.accepted",
                 "message.delta",
@@ -106,7 +107,7 @@ class ResearchScopingFlowServiceTest {
         Map<String, Object> state = new HashMap<>(Map.of(
                 ResearchScopingState.USER_ID, userId,
                 ResearchScopingState.THREAD_ID, harness.threadId(),
-                ResearchScopingState.REQUEST, new PostMessageRequest(content, InteractionMode.DEEP_RESEARCH, "gemini"),
+                ResearchScopingState.REQUEST, PostMessageRequest.of(content, InteractionMode.DEEP_RESEARCH, "gemini"),
                 ResearchScopingState.MEMORY_VIEW, memoryView,
                 ResearchScopingState.SESSION_SUMMARY, memoryView.summary(),
                 ResearchScopingState.LONG_TERM_MEMORY, ""
@@ -119,7 +120,7 @@ class ResearchScopingFlowServiceTest {
         state.putAll(harness.flowService().runScopingFrame(
                 userId,
                 harness.threadId(),
-                new PostMessageRequest(content, InteractionMode.DEEP_RESEARCH, "gemini"),
+                PostMessageRequest.of(content, InteractionMode.DEEP_RESEARCH, "gemini"),
                 memoryView,
                 "",
                 currentDraft,
@@ -139,7 +140,7 @@ class ResearchScopingFlowServiceTest {
 
     private static Harness createHarness(Path tempDir, AgentTurnExecutionSupport agentTurnExecutionSupport) {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
         String threadId = threadRuntimeService.createThread("user-1", "workspace-1", "Thread").threadId();
         MessageRepository messageRepository = new InMemoryMessageRepository();
         ResearchDraftRepository researchDraftRepository = new InMemoryResearchDraftRepository();
@@ -150,7 +151,7 @@ class ResearchScopingFlowServiceTest {
                 threadId,
                 messageRepository,
                 researchDraftRepository,
-                new ResearchScopingFlowService(
+                new ResearchDraftScopingService(
                         threadRuntimeService,
                         messageRepository,
                         researchDraftRepository,
@@ -169,7 +170,7 @@ class ResearchScopingFlowServiceTest {
             String threadId,
             MessageRepository messageRepository,
             ResearchDraftRepository draftRepository,
-            ResearchScopingFlowService flowService
+            ResearchDraftScopingService flowService
     ) {
         private ThreadMemoryView memoryView() {
             return new ThreadMemoryView(threadId, "summary", List.of(), List.of(), null, null, null);
@@ -249,7 +250,7 @@ class ResearchScopingFlowServiceTest {
         public String runModelLoop(String providerId,
                                    AgentExecutionRequest request,
                                    String prompt,
-                                   List<com.xg.platform.tools.ToolDescriptor> availableTools,
+                                   List<com.xg.platform.tooling.domain.ToolDescriptor> availableTools,
                                    AgentOutputEmitter outputEmitter) {
             throw new UnsupportedOperationException();
         }

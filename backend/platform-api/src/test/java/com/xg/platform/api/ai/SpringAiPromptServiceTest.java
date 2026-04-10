@@ -3,18 +3,18 @@ package com.xg.platform.api.ai;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.xg.platform.agent.core.AgentPromptRequest;
-import com.xg.platform.agent.core.chat.ChatRouteKind;
+import com.xg.platform.conversation.domain.ConversationRouteKind;
 import com.xg.platform.contracts.document.DocumentRecord;
 import com.xg.platform.contracts.document.DocumentStatus;
 import com.xg.platform.contracts.skill.SkillDescriptor;
-import com.xg.platform.memory.DocumentChunk;
-import com.xg.platform.memory.RetrievedChunk;
-import com.xg.platform.tools.SkillAvailabilityStatus;
-import com.xg.platform.tools.SkillDefinition;
-import com.xg.platform.tools.SkillExecutionMode;
-import com.xg.platform.tools.SkillInvocation;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.document.domain.DocumentChunk;
+import com.xg.platform.document.domain.RetrievedChunk;
+import com.xg.platform.skill.domain.SkillAvailabilityStatus;
+import com.xg.platform.skill.domain.SkillDefinition;
+import com.xg.platform.skill.domain.SkillExecutionMode;
+import com.xg.platform.skill.domain.SkillInvocation;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -34,7 +34,7 @@ class SpringAiPromptServiceTest {
         AgentPromptRequest request = new AgentPromptRequest(
                 "general-agent",
                 "Summarize the paper",
-                ChatRouteKind.DOCUMENT_QA,
+                ConversationRouteKind.DOCUMENT_QA,
                 List.of(),
                 List.of(
                         docTool("inspect_document", "Inspect one document"),
@@ -94,7 +94,7 @@ class SpringAiPromptServiceTest {
         AgentPromptRequest request = new AgentPromptRequest(
                 "general-agent",
                 "Answer with evidence",
-                ChatRouteKind.CHAT,
+                ConversationRouteKind.CHAT,
                 List.of(),
                 List.of(
                         docTool("search_document", "Search the current document scope"),
@@ -136,7 +136,7 @@ class SpringAiPromptServiceTest {
         AgentPromptRequest request = new AgentPromptRequest(
                 "general-agent",
                 "Help me research this topic",
-                ChatRouteKind.CHAT,
+                ConversationRouteKind.CHAT,
                 List.of(),
                 List.of(
                         workspaceTool("load_skill", "Load a skill"),
@@ -185,7 +185,7 @@ class SpringAiPromptServiceTest {
         AgentPromptRequest request = new AgentPromptRequest(
                 "general-agent",
                 "Help me research this topic",
-                ChatRouteKind.CHAT,
+                ConversationRouteKind.CHAT,
                 List.of(),
                 List.of(
                         workspaceTool("load_skill", "Load a skill"),

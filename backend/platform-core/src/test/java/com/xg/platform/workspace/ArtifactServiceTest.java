@@ -3,12 +3,12 @@ package com.xg.platform.workspace;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.artifact.RegisterArtifactCommand;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.workspace.RegisterArtifactCommand;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
-import com.xg.platform.runtime.ThreadRuntimeService;
+import com.xg.platform.workspace.application.ThreadService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -19,6 +19,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
+import com.xg.platform.workspace.domain.ThreadWorkspace;
 
 class ArtifactServiceTest {
 
@@ -29,7 +32,7 @@ class ArtifactServiceTest {
     void registerArtifactPersistsAndListsMetadata() throws IOException {
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);
         String threadId = threadRuntimeService.createThread("user-1", "workspace-1", "Thread").threadId();
 
@@ -59,7 +62,7 @@ class ArtifactServiceTest {
     void registerArtifactRequiresExistingFile() {
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);
         String threadId = threadRuntimeService.createThread("user-1", "workspace-1", "Thread").threadId();
 

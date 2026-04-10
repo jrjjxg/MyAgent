@@ -6,11 +6,11 @@ import com.xg.platform.agent.core.AgentExecutionRequest;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
 import com.xg.platform.agent.core.ToolExecutionGuard;
-import com.xg.platform.contracts.message.RunEventType;
+import com.xg.platform.contracts.shared.event.RunEventType;
 import com.xg.platform.contracts.research.ResearchSourceKind;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 
@@ -97,15 +97,16 @@ final class AgentToolCallbackFactory {
             ToolExecutionResult executionResult = ToolExecutionGuard.execute(
                     tool.name(),
                     request.toolUseLimits() == null ? DEFAULT_TOOL_TIMEOUT_MS : request.toolUseLimits().timeoutMs(),
-                    () -> agentToolService.execute(new ToolExecutionRequest(
-                            request.userId(),
-                            request.threadId(),
-                            request.runId(),
-                            resolvedTool,
-                            arguments,
-                            request.skillRuntimeSnapshot(),
-                            request.activeSkillIds()
-                    ))
+                    () -> agentToolService.execute(ToolExecutionRequest.builder()
+                            .userId(request.userId())
+                            .threadId(request.threadId())
+                            .runId(request.runId())
+                            .tool(resolvedTool)
+                            .arguments(arguments)
+                            .skillRuntimeSnapshot(request.skillRuntimeSnapshot())
+                            .activeSkillIds(request.activeSkillIds())
+                            .allowedDocumentIds(request.selectedDocumentIds())
+                            .build())
             );
             sourceCollector.capture(tool.name(), executionResult.output());
             emitEvidenceEvents(tool.name(), executionResult.output(), outputEmitter);

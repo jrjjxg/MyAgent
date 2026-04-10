@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.MemoryEventPayload;
-import com.xg.platform.runtime.MemoryEventPublisher;
+import com.xg.platform.memory.port.MemoryEventPayload;
+import com.xg.platform.memory.port.MemoryEventPublisher;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 
 public class RocketMqMemoryEventPublisher implements MemoryEventPublisher {

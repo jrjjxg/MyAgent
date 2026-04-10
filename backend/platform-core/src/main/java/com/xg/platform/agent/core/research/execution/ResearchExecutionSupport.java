@@ -7,7 +7,7 @@ import com.xg.platform.agent.core.ResearchPlan;
 import com.xg.platform.agent.core.ResearchUnit;
 import com.xg.platform.agent.core.ResearchUnitResult;
 import com.xg.platform.contracts.document.DocumentRecord;
-import com.xg.platform.contracts.message.ApprovedResearchPlan;
+import com.xg.platform.contracts.research.ApprovedResearchPlan;
 import com.xg.platform.contracts.research.ReportCitation;
 
 import java.util.List;

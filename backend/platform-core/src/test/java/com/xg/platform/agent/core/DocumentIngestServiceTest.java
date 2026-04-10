@@ -5,24 +5,24 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryRunEventRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryTaskRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadRepository;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.artifact.RegisterArtifactCommand;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.workspace.RegisterArtifactCommand;
 import com.xg.platform.contracts.document.DocumentStatus;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskStatus;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskStatus;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
-import com.xg.platform.memory.ChunkIndexStore;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.memory.SemanticChunker;
-import com.xg.platform.runtime.RetryableTaskException;
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskDispatcher;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.tools.CliToolExecutor;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.document.application.ChunkIndexStore;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.document.application.SemanticChunker;
+import com.xg.platform.shared.runtime.async.RetryableTaskException;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.tooling.application.CliToolExecutor;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -113,7 +113,7 @@ class DocumentIngestServiceTest {
 
     private Harness createHarness(int failingExtractCalls, int maxAttempts) {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);
         DocumentStore documentStore = new DocumentStore(workspaceManager, threadRuntimeService, objectMapper);
@@ -131,8 +131,7 @@ class DocumentIngestServiceTest {
                 objectMapper,
                 dispatcher,
                 new SemanticChunker(),
-                maxAttempts,
-                15
+                new DocumentIngestService.Settings(maxAttempts, 15)
         );
         return new Harness(
                 "user-1",

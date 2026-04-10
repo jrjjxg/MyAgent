@@ -5,7 +5,7 @@ import com.xg.platform.agent.core.AgentGraphMessage;
 import com.xg.platform.agent.core.AgentModelStep;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
-import com.xg.platform.tools.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolDescriptor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -134,12 +134,8 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 resolvedProviderId,
                 resolvedProvider.model(),
                 null,
-                !toolCallbacks.isEmpty()
-        );
-        boolean suppressVisibleStreaming = shouldSuppressVisibleStreaming(
-                resolvedProviderId,
-                resolvedProvider.model(),
-                toolCallbacks
+                !toolCallbacks.isEmpty(),
+                "gemini".equalsIgnoreCase(resolvedProviderId)
         );
         logFlow(() -> "runModelLoop provider=" + resolvedProviderId
                 + " model=" + resolvedProvider.model()
@@ -149,7 +145,7 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 + " toolsEnabled=" + !toolCallbacks.isEmpty());
         logSystemPrompt("model loop", resolvedProviderId, resolvedProvider.model(), request, prompt);
         logConversationMessages("model loop", resolvedProviderId, resolvedProvider.model(), request, promptMessages);
-        String streamedResponse = streamTextResponse(
+        AssistantResponseParts streamedResponse = streamAssistantResponse(
                 resolvedProviderId,
                 resolvedProvider.model(),
                 request,
@@ -158,27 +154,22 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                         .chatResponse()
                         .toIterable(),
                 outputEmitter,
-                !suppressVisibleStreaming
+                true,
+                "model loop stream"
         );
         if (streamedResponse != null) {
-            AgentResponsePostProcessor.SanitizedResponse sanitizedResponse =
-                    responsePostProcessor.sanitizeVisibleResponse(resolvedProviderId, streamedResponse);
             logModelThinking(
                     resolvedProviderId,
                     resolvedProvider.model(),
                     request,
-                    sanitizedResponse.hiddenReasoning(),
+                    streamedResponse.thinkingText(),
                     "model loop stream"
             );
-            responsePostProcessor.emitModelThinking(outputEmitter, sanitizedResponse.hiddenReasoning());
             String finalText = responsePostProcessor.appendSourceAppendix(
-                    sanitizedResponse.visibleText(),
+                    streamedResponse.visibleText(),
                     sourceCollector,
-                    suppressVisibleStreaming ? null : outputEmitter
+                    outputEmitter
             );
-            if (suppressVisibleStreaming) {
-                emitTextChunks(finalText, outputEmitter);
-            }
             return finalText;
         }
         long callStartedAt = System.nanoTime();
@@ -195,21 +186,19 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 + " thread=" + request.threadId()
                 + " run=" + request.runId()
                 + " elapsedMs=" + callElapsedMs);
-        AgentResponsePostProcessor.SanitizedResponse sanitizedResponse =
-                responsePostProcessor.sanitizeVisibleResponse(
-                        resolvedProviderId,
-                        requireText(resolvedProviderId, response, "model loop")
-                );
+        AssistantResponseParts responseParts = splitAssistantResponse(resolvedProviderId, response, "model loop");
         logModelThinking(
                 resolvedProviderId,
                 resolvedProvider.model(),
                 request,
-                sanitizedResponse.hiddenReasoning(),
+                responseParts.thinkingText(),
                 "model loop sync"
         );
-        responsePostProcessor.emitModelThinking(outputEmitter, sanitizedResponse.hiddenReasoning());
+        if (!responseParts.thinkingText().isBlank()) {
+            emitThinkingTranscript(request, outputEmitter, responseParts.thinkingText());
+        }
         String finalText = responsePostProcessor.appendSourceAppendix(
-                sanitizedResponse.visibleText(),
+                responseParts.visibleText(),
                 sourceCollector,
                 null
         );
@@ -285,7 +274,7 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 false,
                 "gemini".equalsIgnoreCase(resolvedProviderId)
         );
-        AgentModelStep streamedStep = streamSingleStep(
+        AssistantResponseParts streamedResponse = streamAssistantResponse(
                 resolvedProviderId,
                 resolvedProvider.model(),
                 request,
@@ -295,17 +284,30 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                         options,
                         toolCallbacks
                 ).stream().chatResponse().toIterable(),
-                outputEmitter
+                outputEmitter,
+                false,
+                "single step stream"
         );
-        if (streamedStep != null) {
+        if (streamedResponse != null) {
             logToolCalls(
                     resolvedProviderId,
                     resolvedProvider.model(),
                     request,
-                    streamedStep.toolCalls(),
+                    streamedResponse.toolCalls(),
                     "single step stream"
             );
-            return streamedStep;
+            logModelThinking(
+                    resolvedProviderId,
+                    resolvedProvider.model(),
+                    request,
+                    streamedResponse.thinkingText(),
+                    "single step stream"
+            );
+            return new AgentModelStep(
+                    streamedResponse.visibleText(),
+                    streamedResponse.toolCalls(),
+                    streamedResponse.assistantProperties()
+            );
         }
         ChatResponse response = newRequestSpec(
                 resolvedProvider.chatModel(),
@@ -314,20 +316,14 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 toolCallbacks
         ).call().chatResponse();
         AssistantResponseParts responseParts = splitAssistantResponse(resolvedProviderId, response, "single step");
-        AgentResponsePostProcessor.SanitizedResponse sanitizedResponse =
-                responsePostProcessor.sanitizeVisibleResponse(resolvedProviderId, responseParts.visibleText());
-        String thinkingContent = combineThinkingContent(responseParts.thinkingText(), sanitizedResponse.hiddenReasoning());
-        if (!thinkingContent.isBlank()) {
-            emitThinkingTranscript(request, outputEmitter, thinkingContent);
-        }
-        if (!sanitizedResponse.visibleText().isBlank()) {
-            emitAgentStepTranscript(request, outputEmitter, sanitizedResponse.visibleText());
+        if (!responseParts.thinkingText().isBlank()) {
+            emitThinkingTranscript(request, outputEmitter, responseParts.thinkingText());
         }
         logModelThinking(
                 resolvedProviderId,
                 resolvedProvider.model(),
                 request,
-                thinkingContent,
+                responseParts.thinkingText(),
                 "single step"
         );
         logToolCalls(
@@ -338,7 +334,7 @@ public class ChatClientAgentTurnExecutionSupport extends AbstractSpringAiAgentTu
                 "single step"
         );
         return new AgentModelStep(
-                sanitizedResponse.visibleText(),
+                responseParts.visibleText(),
                 responseParts.toolCalls(),
                 responseParts.assistantProperties()
         );

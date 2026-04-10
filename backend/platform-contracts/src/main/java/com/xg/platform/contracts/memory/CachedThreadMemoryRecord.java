@@ -1,6 +1,6 @@
 package com.xg.platform.contracts.memory;
 
-import com.xg.platform.contracts.message.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
 
 import java.io.Serializable;
 import java.util.List;

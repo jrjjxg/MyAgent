@@ -2,30 +2,30 @@ package com.xg.platform.agent.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.artifact.RegisterArtifactCommand;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.workspace.RegisterArtifactCommand;
 import com.xg.platform.contracts.document.DocumentRecord;
 import com.xg.platform.contracts.document.DocumentStatus;
-import com.xg.platform.contracts.message.RunEvent;
-import com.xg.platform.contracts.message.RunEventType;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.memory.ChunkIndexStore;
-import com.xg.platform.memory.DocumentChunk;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.memory.SemanticChunker;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.RetryableTaskException;
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskDispatcher;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.contracts.shared.event.RunEvent;
+import com.xg.platform.contracts.shared.event.RunEventType;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.document.application.ChunkIndexStore;
+import com.xg.platform.document.domain.DocumentChunk;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.document.application.SemanticChunker;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.runtime.async.RetryableTaskException;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
-import com.xg.platform.tools.CliToolExecutor;
+import com.xg.platform.tooling.application.CliToolExecutor;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -53,7 +53,7 @@ public class DocumentIngestService {
     private final WorkspaceManager workspaceManager;
     private final TaskRepository taskStore;
     private final RunEventRepository runEventStore;
-    private final ThreadRuntimeService threadRuntimeService;
+    private final ThreadService threadRuntimeService;
     private final CliToolExecutor cliToolExecutor;
     private final ObjectMapper objectMapper;
     private final TaskDispatcher taskDispatcher;
@@ -61,32 +61,15 @@ public class DocumentIngestService {
     private final int maxAttempts;
     private final Duration staleRunningWindow;
 
-    public DocumentIngestService(DocumentStore documentStore,
-                                 ChunkIndexStore chunkIndexStore,
-                                 ArtifactService artifactService,
-                                 WorkspaceManager workspaceManager,
-                                 TaskRepository taskStore,
-                                 RunEventRepository runEventStore,
-                                 ThreadRuntimeService threadRuntimeService,
-                                 CliToolExecutor cliToolExecutor,
-                                 ObjectMapper objectMapper,
-                                 TaskDispatcher taskDispatcher,
-                                 SemanticChunker semanticChunker) {
-        this(
-                documentStore,
-                chunkIndexStore,
-                artifactService,
-                workspaceManager,
-                taskStore,
-                runEventStore,
-                threadRuntimeService,
-                cliToolExecutor,
-                objectMapper,
-                taskDispatcher,
-                semanticChunker,
-                3,
-                15
-        );
+    public record Settings(int maxAttempts, long staleRunningMinutes) {
+        public Settings {
+            maxAttempts = Math.max(1, maxAttempts);
+            staleRunningMinutes = Math.max(1L, staleRunningMinutes);
+        }
+
+        public static Settings defaults() {
+            return new Settings(3, 15);
+        }
     }
 
     public DocumentIngestService(DocumentStore documentStore,
@@ -95,13 +78,12 @@ public class DocumentIngestService {
                                  WorkspaceManager workspaceManager,
                                  TaskRepository taskStore,
                                  RunEventRepository runEventStore,
-                                 ThreadRuntimeService threadRuntimeService,
+                                 ThreadService threadRuntimeService,
                                  CliToolExecutor cliToolExecutor,
                                  ObjectMapper objectMapper,
                                  TaskDispatcher taskDispatcher,
                                  SemanticChunker semanticChunker,
-                                 int maxAttempts,
-                                 long staleRunningMinutes) {
+                                 Settings settings) {
         this.documentStore = documentStore;
         this.chunkIndexStore = chunkIndexStore;
         this.artifactService = artifactService;
@@ -113,8 +95,8 @@ public class DocumentIngestService {
         this.objectMapper = objectMapper;
         this.taskDispatcher = taskDispatcher;
         this.semanticChunker = semanticChunker;
-        this.maxAttempts = Math.max(1, maxAttempts);
-        this.staleRunningWindow = Duration.ofMinutes(Math.max(1L, staleRunningMinutes));
+        this.maxAttempts = settings.maxAttempts();
+        this.staleRunningWindow = Duration.ofMinutes(settings.staleRunningMinutes());
     }
 
     public DocumentIngestionTicket scheduleIngestion(String userId, String threadId, ArtifactRecord uploadArtifact) {
@@ -146,9 +128,9 @@ public class DocumentIngestService {
             return new DocumentIngestionTicket(documentRecord.documentId(), existingTask == null ? null : existingTask.taskId());
         }
         if (existingTask != null) {
-            if (existingTask.status() == com.xg.platform.contracts.task.TaskStatus.FAILED
-                    || existingTask.status() == com.xg.platform.contracts.task.TaskStatus.CANCELLED
-                    || existingTask.status() == com.xg.platform.contracts.task.TaskStatus.COMPLETED) {
+            if (existingTask.status() == com.xg.platform.contracts.shared.task.TaskStatus.FAILED
+                    || existingTask.status() == com.xg.platform.contracts.shared.task.TaskStatus.CANCELLED
+                    || existingTask.status() == com.xg.platform.contracts.shared.task.TaskStatus.COMPLETED) {
                 logger.info(() -> "document ingest resetting existing task"
                         + " workspace=" + workspaceId
                         + " thread=" + sourceThreadId

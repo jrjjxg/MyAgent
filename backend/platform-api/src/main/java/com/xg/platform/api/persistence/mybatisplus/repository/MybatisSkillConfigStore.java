@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.api.persistence.mybatisplus.entity.SkillUserConfigEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.SkillUserConfigMapper;
 import com.xg.platform.api.skill.SkillSecretCrypto;
-import com.xg.platform.tools.SkillConfigStore;
-import com.xg.platform.tools.SkillUserConfig;
+import com.xg.platform.skill.port.SkillConfigStore;
+import com.xg.platform.skill.domain.SkillUserConfig;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;

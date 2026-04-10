@@ -3,7 +3,7 @@ package com.xg.platform.agent.core.research.execution;
 import com.xg.platform.agent.core.AgentExecutionRequest;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentTurnExecutionSupport;
-import com.xg.platform.tools.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolDescriptor;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

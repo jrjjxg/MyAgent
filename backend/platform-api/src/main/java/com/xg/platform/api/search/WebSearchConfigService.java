@@ -5,10 +5,10 @@ import com.xg.platform.api.config.PlatformProperties;
 import com.xg.platform.api.persistence.mybatisplus.entity.UserWebSearchConfigEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.UserWebSearchConfigMapper;
 import com.xg.platform.api.skill.SkillSecretCrypto;
-import com.xg.platform.contracts.search.UpdateWebSearchSettingsRequest;
-import com.xg.platform.contracts.search.WebSearchSettingsRecord;
-import com.xg.platform.contracts.search.WebSearchSettingsResponse;
-import com.xg.platform.tools.WebSearchSettingsResolver;
+import com.xg.platform.contracts.tooling.UpdateWebSearchSettingsRequest;
+import com.xg.platform.contracts.tooling.WebSearchSettingsRecord;
+import com.xg.platform.contracts.tooling.WebSearchSettingsResponse;
+import com.xg.platform.tooling.port.WebSearchSettingsResolver;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

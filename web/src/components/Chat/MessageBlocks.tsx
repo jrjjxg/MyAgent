@@ -42,6 +42,18 @@ export function AssistantMessageBlock({ content, sources, pending }: { content: 
 }
 
 export function AgentStepTrace({ events }: { events: RunEvent[] }) {
+  const hasNativeThinking = events.some((event) =>
+    event.eventType === "model.thinking.started"
+    || event.eventType === "model.thinking.delta"
+    || event.eventType === "model.thinking.completed"
+    || event.eventType === "model.thinking"
+  );
+  const hasThinkingCompleted = events.some((event) => event.eventType === "model.thinking.completed");
+  const startedEventType = hasNativeThinking ? "model.thinking.started" : "agent.step.started";
+  const deltaEventType = hasNativeThinking ? "model.thinking.delta" : "agent.step.delta";
+  const completedEventTypes = hasNativeThinking
+    ? new Set(hasThinkingCompleted ? ["model.thinking.completed"] : ["model.thinking"])
+    : new Set(["agent.step.completed"]);
   const orderedEvents = [...events].reverse();
   const blocks: string[] = [];
   let current = "";
@@ -49,7 +61,7 @@ export function AgentStepTrace({ events }: { events: RunEvent[] }) {
   let completed = false;
 
   for (const event of orderedEvents) {
-    if (event.eventType === "agent.step.started") {
+    if (event.eventType === startedEventType) {
       started = true;
       if (current.trim()) {
         blocks.push(current.trim());
@@ -58,12 +70,12 @@ export function AgentStepTrace({ events }: { events: RunEvent[] }) {
       completed = false;
       continue;
     }
-    if (event.eventType === "agent.step.delta") {
+    if (event.eventType === deltaEventType) {
       const payload = event.payload as { delta?: string } | undefined;
       current += typeof payload?.delta === "string" ? payload.delta : "";
       continue;
     }
-    if (event.eventType === "agent.step.completed") {
+    if (completedEventTypes.has(event.eventType)) {
       const payload = event.payload as Record<string, unknown> | undefined;
       const content = readString(payload?.content) || current;
       if (content.trim()) {
@@ -94,14 +106,14 @@ export function AgentStepTrace({ events }: { events: RunEvent[] }) {
         onClick={() => setCollapsed((currentState) => !currentState)}
         aria-expanded={!collapsed}
       >
-        <span>{completed ? "Execution Notes" : "Executing..."}</span>
+        <span>{completed ? "Thinking" : "Thinking..."}</span>
         <span className="thinking-toggle-hint">{collapsed ? "Expand" : "Collapse"}</span>
       </button>
       {!collapsed ? (
         <div className="thinking-body">
           {blocks.length > 0
             ? blocks.map((block, index) => <MarkdownBlock key={`${index}-${block.length}`} content={block} />)
-            : <MarkdownBlock content="*Executing...*" />}
+            : <MarkdownBlock content="*Thinking...*" />}
         </div>
       ) : null}
     </div>

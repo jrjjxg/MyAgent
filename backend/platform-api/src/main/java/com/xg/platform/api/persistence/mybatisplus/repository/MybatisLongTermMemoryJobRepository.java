@@ -6,7 +6,7 @@ import com.xg.platform.api.persistence.mybatisplus.entity.MemoryExtractionJobEnt
 import com.xg.platform.api.persistence.mybatisplus.mapper.MemoryExtractionJobMapper;
 import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.MemoryExtractionJobStatus;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
 
 import java.time.Instant;
 import java.util.Optional;

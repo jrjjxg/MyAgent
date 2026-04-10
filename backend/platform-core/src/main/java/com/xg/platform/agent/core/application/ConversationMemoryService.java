@@ -3,11 +3,11 @@ package com.xg.platform.agent.core.application;
 import com.xg.platform.contracts.memory.CachedThreadMemoryRecord;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
+import com.xg.platform.workspace.application.ThreadService;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 public class ConversationMemoryService {
 
-    private final ThreadRuntimeService threadRuntimeService;
+    private final ThreadService threadRuntimeService;
     private final MessageRepository messageRepository;
     private final ThreadMemorySnapshotRepository threadMemorySnapshotRepository;
     private final ThreadMemoryViewCache threadMemoryViewCache;
@@ -24,7 +24,7 @@ public class ConversationMemoryService {
     private final int windowSize;
     private final boolean readModelAsync;
 
-    public ConversationMemoryService(ThreadRuntimeService threadRuntimeService,
+    public ConversationMemoryService(ThreadService threadRuntimeService,
                                      MessageRepository messageRepository,
                                      ThreadMemorySnapshotRepository threadMemorySnapshotRepository,
                                      ThreadMemoryViewCache threadMemoryViewCache,

@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.MemoryEventPayload;
-import com.xg.platform.runtime.MemoryEventProcessor;
+import com.xg.platform.memory.port.MemoryEventPayload;
+import com.xg.platform.memory.port.MemoryEventProcessor;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

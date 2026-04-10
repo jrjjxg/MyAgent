@@ -3,9 +3,9 @@ package com.xg.platform.api.persistence.mybatisplus.convertor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.api.persistence.mybatisplus.entity.ResearchDraftEntity;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.contracts.message.ResearchDraftStatus;
-import com.xg.platform.contracts.message.ResearchPlanStep;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.contracts.research.ResearchDraftStatus;
+import com.xg.platform.contracts.research.ResearchPlanStep;
 
 import java.util.List;
 

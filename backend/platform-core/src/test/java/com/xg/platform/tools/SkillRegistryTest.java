@@ -11,6 +11,12 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.skill.domain.SkillAvailabilityStatus;
+import com.xg.platform.skill.domain.SkillDefinition;
+import com.xg.platform.skill.domain.SkillPackageCommand;
+import com.xg.platform.skill.runtime.SkillCommandRunner;
+import com.xg.platform.tooling.application.McpServerRegistry;
 
 class SkillRegistryTest {
 

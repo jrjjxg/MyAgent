@@ -16,12 +16,12 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryResearchTa
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryRunEventRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryTaskRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadRepository;
-import com.xg.platform.contracts.agent.AgentCapability;
-import com.xg.platform.contracts.artifact.ArtifactType;
+import com.xg.platform.contracts.shared.agent.AgentCapability;
+import com.xg.platform.contracts.workspace.ArtifactType;
 import com.xg.platform.contracts.document.DocumentRecord;
-import com.xg.platform.contracts.message.ApprovedResearchPlan;
+import com.xg.platform.contracts.research.ApprovedResearchPlan;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.RunEvent;
+import com.xg.platform.contracts.shared.event.RunEvent;
 import com.xg.platform.contracts.research.ReportCitation;
 import com.xg.platform.contracts.research.ResearchFindingRecord;
 import com.xg.platform.contracts.research.ResearchIterationRecord;
@@ -29,19 +29,19 @@ import com.xg.platform.contracts.research.ResearchReportSection;
 import com.xg.platform.contracts.research.ResearchSourceKind;
 import com.xg.platform.contracts.research.ResearchSourceRecord;
 import com.xg.platform.contracts.research.ResearchTaskSnapshotRecord;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskStatus;
-import com.xg.platform.graph.ResearchTaskState;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
-import com.xg.platform.tools.ToolGroup;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskStatus;
+import com.xg.platform.research.runtime.ResearchTaskState;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -52,8 +52,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import com.xg.platform.research.application.ResearchWorkflowService;
 
-class ResearchExecutionFlowServiceTest {
+class ResearchWorkflowServiceTest {
 
     @TempDir
     Path tempDir;
@@ -61,7 +62,7 @@ class ResearchExecutionFlowServiceTest {
     @Test
     void stagesResearchExecutionAndSkipsDuplicateArtifactWrite() throws Exception {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
         String userId = "user-1";
         String threadId = threadRuntimeService.createThread(userId, "workspace-1", "Research Thread").threadId();
         String taskId = "task-1";
@@ -73,7 +74,7 @@ class ResearchExecutionFlowServiceTest {
         InMemoryResearchTaskSnapshotRepository researchTaskSnapshotRepository = new InMemoryResearchTaskSnapshotRepository();
         taskRepository.createQueuedTask(userId, threadId, taskId, "general-agent", TaskKind.RESEARCH, "AI chips", "Research AI chips", null);
 
-        ResearchExecutionFlowService flowService = new ResearchExecutionFlowService(
+        ResearchWorkflowService flowService = new ResearchWorkflowService(
                 threadRuntimeService,
                 taskRepository,
                 runEventRepository,
@@ -233,7 +234,7 @@ class ResearchExecutionFlowServiceTest {
                     "notes",
                     "local conclusion",
                     List.of("[Nvidia Whitepaper, p.4]"),
-                    List.of(new ResearchSourceRecord(
+                    List.of(ResearchSourceRecord.basic(
                             "document_chunk:nvidia-whitepaper:4",
                             ResearchSourceKind.DOCUMENT_CHUNK,
                             "Nvidia Whitepaper",
@@ -282,7 +283,7 @@ class ResearchExecutionFlowServiceTest {
         public String runModelLoop(String providerId,
                                    AgentExecutionRequest request,
                                    String prompt,
-                                   List<com.xg.platform.tools.ToolDescriptor> availableTools,
+                                   List<com.xg.platform.tooling.domain.ToolDescriptor> availableTools,
                                    AgentOutputEmitter outputEmitter) {
             throw new UnsupportedOperationException();
         }

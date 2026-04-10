@@ -13,18 +13,19 @@ import com.xg.platform.agent.core.application.LongTermMemoryJobScheduler;
 import com.xg.platform.agent.core.application.ShortTermMemoryProjectionService;
 import com.xg.platform.agent.core.application.SimpleConversationSummaryCompressor;
 import com.xg.platform.agent.core.shared.MemoryContextFormatter;
-import com.xg.platform.memory.NoOpThreadMemoryViewCache;
-import com.xg.platform.runtime.LongTermMemoryJobDispatcher;
-import com.xg.platform.runtime.LongTermMemoryJobProcessor;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.LongTermMemoryRepository;
-import com.xg.platform.runtime.MemoryEventProcessor;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
+import com.xg.platform.memory.application.LongTermMemoryMaintenanceService;
+import com.xg.platform.memory.application.NoOpThreadMemoryViewCache;
+import com.xg.platform.memory.port.LongTermMemoryJobDispatcher;
+import com.xg.platform.memory.port.LongTermMemoryJobProcessor;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
+import com.xg.platform.memory.port.MemoryEventProcessor;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
+import com.xg.platform.workspace.application.ThreadService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,7 +54,7 @@ public class MemoryConfig {
     ConversationSummaryCompressor conversationSummaryCompressor(PlatformProperties properties,
                                                                 AgentTurnExecutionSupport agentTurnExecutionSupport) {
         PlatformProperties.Summary summary = properties.getMemory().getShortTerm().getSummary();
-        ConversationSummaryCompressor fallback = new SimpleConversationSummaryCompressor();
+        ConversationSummaryCompressor fallback = SimpleConversationSummaryCompressor.defaults();
         if (!summary.isEnabled()) {
             return fallback;
         }
@@ -135,6 +136,11 @@ public class MemoryConfig {
     }
 
     @Bean
+    LongTermMemoryMaintenanceService longTermMemoryMaintenanceService(LongTermMemoryRepository longTermMemoryRepository) {
+        return new LongTermMemoryMaintenanceService(longTermMemoryRepository);
+    }
+
+    @Bean
     MemoryEventProcessor memoryEventProcessor(ShortTermMemoryProjectionService shortTermMemoryProjectionService,
                                               LongTermMemoryJobScheduler longTermMemoryJobScheduler,
                                               PlatformProperties properties) {
@@ -146,7 +152,7 @@ public class MemoryConfig {
     }
 
     @Bean
-    ConversationMemoryService conversationMemoryService(ThreadRuntimeService threadRuntimeService,
+    ConversationMemoryService conversationMemoryService(ThreadService threadRuntimeService,
                                                         MessageRepository messageRepository,
                                                         ThreadMemorySnapshotRepository threadMemorySnapshotRepository,
                                                         ThreadMemoryViewCache threadMemoryViewCache,

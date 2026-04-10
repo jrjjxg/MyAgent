@@ -5,27 +5,27 @@ import com.xg.platform.agent.core.AgentToolService;
 import com.xg.platform.api.tooling.DefaultAgentToolService;
 import com.xg.platform.api.skill.SkillConfigService;
 import com.xg.platform.agent.core.DocumentIngestService;
-import com.xg.platform.memory.ChunkIndexStore;
-import com.xg.platform.memory.ContextAssembler;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.memory.SemanticChunker;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskDispatcher;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.tools.BuiltinToolExecutor;
-import com.xg.platform.tools.BuiltinWeatherClient;
-import com.xg.platform.tools.BuiltinWebResearchClient;
-import com.xg.platform.tools.CliToolExecutor;
-import com.xg.platform.tools.McpServerRegistry;
-import com.xg.platform.tools.McpToolExecutor;
-import com.xg.platform.tools.SkillConfigStore;
-import com.xg.platform.tools.SkillPackageExecutor;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.WebSearchSettingsResolver;
-import com.xg.platform.tools.WorkspaceDocumentToolSupport;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.document.application.ChunkIndexStore;
+import com.xg.platform.document.application.ContextAssembler;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.document.application.SemanticChunker;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.tooling.application.BuiltinToolExecutor;
+import com.xg.platform.tooling.application.BuiltinWeatherClient;
+import com.xg.platform.tooling.application.BuiltinWebResearchClient;
+import com.xg.platform.tooling.application.CliToolExecutor;
+import com.xg.platform.tooling.application.McpServerRegistry;
+import com.xg.platform.tooling.application.McpToolExecutor;
+import com.xg.platform.skill.port.SkillConfigStore;
+import com.xg.platform.skill.runtime.SkillPackageExecutor;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.tooling.port.WebSearchSettingsResolver;
+import com.xg.platform.tooling.application.WorkspaceDocumentToolSupport;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -197,7 +197,7 @@ public class ToolingConfig {
                                                 WorkspaceManager workspaceManager,
                                                 TaskRepository taskRepository,
                                                 RunEventRepository runEventRepository,
-                                                ThreadRuntimeService threadRuntimeService,
+                                                ThreadService threadRuntimeService,
                                                 CliToolExecutor cliToolExecutor,
                                                 ObjectMapper objectMapper,
                                                 TaskDispatcher taskDispatcher,
@@ -215,8 +215,10 @@ public class ToolingConfig {
                 objectMapper.copy(),
                 taskDispatcher,
                 semanticChunker,
-                properties.getIngest().getMaxAttempts(),
-                properties.getIngest().getStaleRunningMinutes()
+                new DocumentIngestService.Settings(
+                        properties.getIngest().getMaxAttempts(),
+                        properties.getIngest().getStaleRunningMinutes()
+                )
         );
     }
 

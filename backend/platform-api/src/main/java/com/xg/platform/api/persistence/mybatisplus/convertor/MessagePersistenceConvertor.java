@@ -1,9 +1,9 @@
 package com.xg.platform.api.persistence.mybatisplus.convertor;
 
 import com.xg.platform.api.persistence.mybatisplus.entity.MessageEntity;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
 
 public final class MessagePersistenceConvertor {
 

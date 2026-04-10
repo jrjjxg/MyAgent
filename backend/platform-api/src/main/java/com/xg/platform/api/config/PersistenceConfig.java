@@ -28,26 +28,26 @@ import com.xg.platform.api.persistence.mybatisplus.repository.MybatisTaskReposit
 import com.xg.platform.api.persistence.mybatisplus.repository.MybatisThreadMemorySnapshotRepository;
 import com.xg.platform.api.persistence.mybatisplus.repository.MybatisThreadRepository;
 import com.xg.platform.api.skill.SkillSecretCrypto;
-import com.xg.platform.graph.CheckpointConfiguration;
-import com.xg.platform.memory.ChunkIndexStore;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.LongTermMemoryRepository;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.ResearchTaskSnapshotRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
-import com.xg.platform.runtime.ThreadDeletionService;
-import com.xg.platform.runtime.ThreadRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.runtime.WorkspaceRepository;
-import com.xg.platform.runtime.WorkspaceRuntimeService;
-import com.xg.platform.tools.SkillConfigStore;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.UploadService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.shared.runtime.graph.CheckpointConfiguration;
+import com.xg.platform.document.application.ChunkIndexStore;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.research.port.ResearchTaskSnapshotRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
+import com.xg.platform.workspace.application.ThreadDeletionService;
+import com.xg.platform.workspace.port.ThreadRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.port.WorkspaceRepository;
+import com.xg.platform.workspace.application.WorkspaceService;
+import com.xg.platform.skill.port.SkillConfigStore;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.UploadService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,7 +64,7 @@ public class PersistenceConfig {
 
     @Bean
     ArtifactService artifactService(WorkspaceManager workspaceManager,
-                                    ThreadRuntimeService threadRuntimeService,
+                                    ThreadService threadRuntimeService,
                                     ObjectMapper objectMapper) {
         return new ArtifactService(workspaceManager, threadRuntimeService, objectMapper.copy());
     }
@@ -72,7 +72,7 @@ public class PersistenceConfig {
     @Bean
     UploadService uploadService(WorkspaceManager workspaceManager,
                                 ArtifactService artifactService,
-                                ThreadRuntimeService threadRuntimeService) {
+                                ThreadService threadRuntimeService) {
         return new UploadService(workspaceManager, artifactService, threadRuntimeService);
     }
 
@@ -82,8 +82,8 @@ public class PersistenceConfig {
     }
 
     @Bean
-    WorkspaceRuntimeService workspaceRuntimeService(WorkspaceRepository workspaceRepository) {
-        return new WorkspaceRuntimeService(workspaceRepository);
+    WorkspaceService workspaceRuntimeService(WorkspaceRepository workspaceRepository) {
+        return new WorkspaceService(workspaceRepository);
     }
 
     @Bean
@@ -92,12 +92,12 @@ public class PersistenceConfig {
     }
 
     @Bean
-    ThreadRuntimeService threadRuntimeService(ThreadRepository threadRepository) {
-        return new ThreadRuntimeService(threadRepository);
+    ThreadService threadRuntimeService(ThreadRepository threadRepository) {
+        return new ThreadService(threadRepository);
     }
 
     @Bean
-    ThreadDeletionService threadDeletionService(ThreadRuntimeService threadRuntimeService,
+    ThreadDeletionService threadDeletionService(ThreadService threadRuntimeService,
                                                 ThreadRepository threadRepository,
                                                 MessageRepository messageRepository,
                                                 ResearchDraftRepository researchDraftRepository,
@@ -213,7 +213,7 @@ public class PersistenceConfig {
 
     @Bean
     DocumentStore documentStore(WorkspaceManager workspaceManager,
-                                ThreadRuntimeService threadRuntimeService,
+                                ThreadService threadRuntimeService,
                                 ObjectMapper objectMapper) {
         return new DocumentStore(workspaceManager, threadRuntimeService, objectMapper.copy());
     }

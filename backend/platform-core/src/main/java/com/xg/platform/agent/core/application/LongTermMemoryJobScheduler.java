@@ -2,13 +2,13 @@ package com.xg.platform.agent.core.application;
 
 import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.MemoryExtractionJobStatus;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.runtime.LongTermMemoryExtractionRequest;
-import com.xg.platform.runtime.LongTermMemoryJobDispatcher;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.MessageRepository;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.memory.port.LongTermMemoryExtractionRequest;
+import com.xg.platform.memory.port.LongTermMemoryJobDispatcher;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.conversation.port.MessageRepository;
 
 import java.util.List;
 import java.util.Optional;

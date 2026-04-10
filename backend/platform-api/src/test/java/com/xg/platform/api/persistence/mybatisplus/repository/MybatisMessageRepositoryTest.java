@@ -2,7 +2,7 @@ package com.xg.platform.api.persistence.mybatisplus.repository;
 
 import com.xg.platform.api.persistence.mybatisplus.entity.MessageEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.MessageMapper;
-import com.xg.platform.contracts.message.MessageRole;
+import com.xg.platform.contracts.conversation.MessageRole;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

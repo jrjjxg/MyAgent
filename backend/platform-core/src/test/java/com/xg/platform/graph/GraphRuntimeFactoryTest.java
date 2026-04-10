@@ -2,12 +2,12 @@ package com.xg.platform.graph;
 
 import com.xg.platform.agent.core.AgentGraphMessage;
 import com.xg.platform.agent.core.AgentGraphToolCall;
-import com.xg.platform.agent.core.chat.ChatRouteKind;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.PostMessageRequest;
+import com.xg.platform.conversation.domain.ConversationRouteKind;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.PostMessageRequest;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
 import org.junit.jupiter.api.Test;
 
@@ -19,15 +19,24 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import com.xg.platform.conversation.runtime.InteractionGraphNodes;
+import com.xg.platform.conversation.runtime.InteractionState;
+import com.xg.platform.research.runtime.ResearchGraphNodes;
+import com.xg.platform.research.runtime.ResearchTaskState;
+import com.xg.platform.shared.runtime.graph.CheckpointConfiguration;
+import com.xg.platform.shared.runtime.graph.PlatformGraphRunner;
+import com.xg.platform.shared.runtime.graph.RunEventConsumerRegistry;
+import com.xg.platform.conversation.runtime.ConversationGraphDefinition;
+import com.xg.platform.research.runtime.ResearchGraphDefinition;
 
-class GraphRuntimeFactoryTest {
+class PlatformGraphRunnerTest {
 
     @Test
     void executesInteractionGraphChatLoopStagesInOrder() {
         List<String> order = Collections.synchronizedList(new ArrayList<>());
         CheckpointConfiguration checkpointConfiguration = new CheckpointConfiguration();
-        GraphRuntimeFactory factory = new GraphRuntimeFactory(
-                GraphRuntimeFactory.compileInteractionGraph(checkpointConfiguration, new InteractionGraphNodes() {
+        PlatformGraphRunner factory = new PlatformGraphRunner(
+                ConversationGraphDefinition.compile(checkpointConfiguration, new InteractionGraphNodes() {
                     @Override
                     public Map<String, Object> loadShortTermMemory(InteractionState state) {
                         order.add("loadShortTermMemory");
@@ -49,11 +58,11 @@ class GraphRuntimeFactoryTest {
                     @Override
                     public Map<String, Object> routeInteraction(InteractionState state) {
                         order.add("routeInteraction");
-                        return Map.of(InteractionState.ROUTE_KIND, ChatRouteKind.CHAT);
+                        return Map.of(InteractionState.ROUTE_KIND, ConversationRouteKind.CHAT);
                     }
 
                     @Override
-                    public Map<String, Object> prepareAgentStep(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> prepareAgentStep(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         order.add("prepareAgentStep");
                         return Map.of(
                                 InteractionState.MESSAGES,
@@ -77,7 +86,7 @@ class GraphRuntimeFactoryTest {
                     }
 
                     @Override
-                    public Map<String, Object> executeTools(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> executeTools(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         order.add("executeTools");
                         return Map.of(
                                 InteractionState.MESSAGES,
@@ -86,7 +95,7 @@ class GraphRuntimeFactoryTest {
                     }
 
                     @Override
-                    public Map<String, Object> runScopingFrame(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> runScopingFrame(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         return Map.of();
                     }
 
@@ -96,30 +105,30 @@ class GraphRuntimeFactoryTest {
                     }
 
                     @Override
-                    public Map<String, Object> persistAssistantMessage(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> persistAssistantMessage(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         return Map.of();
                     }
 
                     @Override
-                    public Map<String, Object> persistTurnArtifacts(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> persistTurnArtifacts(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         order.add("persistTurnArtifacts");
                         return Map.of();
                     }
 
                     @Override
-                    public Map<String, Object> publishTurnEvents(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+                    public Map<String, Object> publishTurnEvents(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
                         order.add("publishTurnEvents");
                         return Map.of(InteractionState.RESULT, "completed");
                     }
                 }),
-                GraphRuntimeFactory.compileResearchGraph(checkpointConfiguration, new NoOpResearchGraphNodes()),
+                ResearchGraphDefinition.compile(checkpointConfiguration, new NoOpResearchGraphNodes()),
                 new RunEventConsumerRegistry()
         );
 
         factory.invokeInteraction(Map.of(
                         InteractionState.USER_ID, "user-1",
                         InteractionState.THREAD_ID, "thread-1",
-                        InteractionState.REQUEST, new PostMessageRequest("hello", InteractionMode.CHAT, "gemini")
+                        InteractionState.REQUEST, PostMessageRequest.of("hello", InteractionMode.CHAT, "gemini")
                 ),
                 "thread-1",
                 event -> {
@@ -151,9 +160,9 @@ class GraphRuntimeFactoryTest {
     void executesResearchGraphStagesWithExplicitIterationLoop() {
         List<String> order = new ArrayList<>();
         CheckpointConfiguration checkpointConfiguration = new CheckpointConfiguration();
-        GraphRuntimeFactory factory = new GraphRuntimeFactory(
-                GraphRuntimeFactory.compileInteractionGraph(checkpointConfiguration, new NoOpInteractionGraphNodes()),
-                GraphRuntimeFactory.compileResearchGraph(checkpointConfiguration, new ResearchGraphNodes() {
+        PlatformGraphRunner factory = new PlatformGraphRunner(
+                ConversationGraphDefinition.compile(checkpointConfiguration, new NoOpInteractionGraphNodes()),
+                ResearchGraphDefinition.compile(checkpointConfiguration, new ResearchGraphNodes() {
                     @Override
                     public Map<String, Object> hydrateTask(ResearchTaskState state) {
                         order.add("hydrateTask");
@@ -171,7 +180,7 @@ class GraphRuntimeFactoryTest {
                         order.add("initializeSession");
                         return Map.of(
                                 ResearchTaskState.RESEARCH_SESSION,
-                                new com.xg.platform.agent.core.research.execution.ResearchSessionState(
+                                new com.xg.platform.research.runtime.ResearchSessionState(
                                         "brief",
                                         List.of(new com.xg.platform.contracts.research.ResearchAgendaItem("agenda-1", "One", "Objective", "high", "focus", false)),
                                         List.of(),
@@ -215,10 +224,10 @@ class GraphRuntimeFactoryTest {
                     @Override
                     public Map<String, Object> gapAnalysis(ResearchTaskState state) {
                         order.add("gapAnalysis");
-                        int iterationNo = state.<com.xg.platform.agent.core.research.execution.ResearchSessionState>researchSession().orElseThrow().iterationNo() + 1;
+                        int iterationNo = state.<com.xg.platform.research.runtime.ResearchSessionState>researchSession().orElseThrow().iterationNo() + 1;
                         return Map.of(
                                 ResearchTaskState.RESEARCH_SESSION,
-                                new com.xg.platform.agent.core.research.execution.ResearchSessionState(
+                                new com.xg.platform.research.runtime.ResearchSessionState(
                                         "brief",
                                         List.of(new com.xg.platform.contracts.research.ResearchAgendaItem("agenda-1", "One", "Objective", "high", "focus", true)),
                                         List.of(),
@@ -311,8 +320,8 @@ class GraphRuntimeFactoryTest {
     @Test
     void interactionGraphClonesArtifactStateWithoutObjectStreamSerialization() {
         CheckpointConfiguration checkpointConfiguration = new CheckpointConfiguration();
-        GraphRuntimeFactory factory = new GraphRuntimeFactory(
-                GraphRuntimeFactory.compileInteractionGraph(checkpointConfiguration, new NoOpInteractionGraphNodes() {
+        PlatformGraphRunner factory = new PlatformGraphRunner(
+                ConversationGraphDefinition.compile(checkpointConfiguration, new NoOpInteractionGraphNodes() {
                     @Override
                     public Map<String, Object> loadShortTermMemory(InteractionState state) {
                         return Map.of(
@@ -334,7 +343,7 @@ class GraphRuntimeFactoryTest {
                         );
                     }
                 }),
-                GraphRuntimeFactory.compileResearchGraph(checkpointConfiguration, new NoOpResearchGraphNodes()),
+                ResearchGraphDefinition.compile(checkpointConfiguration, new NoOpResearchGraphNodes()),
                 new RunEventConsumerRegistry()
         );
 
@@ -342,7 +351,7 @@ class GraphRuntimeFactoryTest {
                 Map.of(
                         InteractionState.USER_ID, "user-1",
                         InteractionState.THREAD_ID, "thread-1",
-                        InteractionState.REQUEST, new PostMessageRequest("hello", InteractionMode.CHAT, "gemini")
+                        InteractionState.REQUEST, PostMessageRequest.of("hello", InteractionMode.CHAT, "gemini")
                 ),
                 "thread-1",
                 event -> {
@@ -368,11 +377,11 @@ class GraphRuntimeFactoryTest {
 
         @Override
         public Map<String, Object> routeInteraction(InteractionState state) {
-            return Map.of(InteractionState.ROUTE_KIND, ChatRouteKind.CHAT);
+            return Map.of(InteractionState.ROUTE_KIND, ConversationRouteKind.CHAT);
         }
 
         @Override
-        public Map<String, Object> prepareAgentStep(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> prepareAgentStep(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of();
         }
 
@@ -382,12 +391,12 @@ class GraphRuntimeFactoryTest {
         }
 
         @Override
-        public Map<String, Object> executeTools(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> executeTools(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of();
         }
 
         @Override
-        public Map<String, Object> runScopingFrame(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> runScopingFrame(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of();
         }
 
@@ -397,17 +406,17 @@ class GraphRuntimeFactoryTest {
         }
 
         @Override
-        public Map<String, Object> persistAssistantMessage(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> persistAssistantMessage(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of();
         }
 
         @Override
-        public Map<String, Object> persistTurnArtifacts(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> persistTurnArtifacts(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of();
         }
 
         @Override
-        public Map<String, Object> publishTurnEvents(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.message.RunEvent> runEventConsumer) {
+        public Map<String, Object> publishTurnEvents(InteractionState state, java.util.function.Consumer<com.xg.platform.contracts.shared.event.RunEvent> runEventConsumer) {
             return Map.of(InteractionState.RESULT, "completed");
         }
     }

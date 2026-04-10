@@ -6,11 +6,11 @@ import com.xg.platform.api.upload.ChunkUploadStateStore;
 import com.xg.platform.api.upload.ChunkedUploadService;
 import com.xg.platform.api.upload.InMemoryChunkUploadStateStore;
 import com.xg.platform.api.upload.RedisChunkUploadStateStore;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.runtime.WorkspaceRuntimeService;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.UploadService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.application.WorkspaceService;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.UploadService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,8 +36,8 @@ public class UploadConfig {
     }
 
     @Bean
-    ChunkedUploadService chunkedUploadService(ThreadRuntimeService threadRuntimeService,
-                                             WorkspaceRuntimeService workspaceRuntimeService,
+    ChunkedUploadService chunkedUploadService(ThreadService threadRuntimeService,
+                                             WorkspaceService workspaceRuntimeService,
                                              WorkspaceManager workspaceManager,
                                              UploadService uploadService,
                                              ArtifactService artifactService,

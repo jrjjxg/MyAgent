@@ -14,8 +14,8 @@ public record AgentModelStep(
         assistantProperties = assistantProperties == null ? Map.of() : Map.copyOf(assistantProperties);
     }
 
-    public AgentModelStep(String content, List<AgentGraphToolCall> toolCalls) {
-        this(content, toolCalls, Map.of());
+    public static AgentModelStep of(String content, List<AgentGraphToolCall> toolCalls) {
+        return new AgentModelStep(content, toolCalls, Map.of());
     }
 
     public boolean hasToolCalls() {

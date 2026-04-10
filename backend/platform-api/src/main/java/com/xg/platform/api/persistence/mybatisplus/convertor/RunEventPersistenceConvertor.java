@@ -2,7 +2,7 @@ package com.xg.platform.api.persistence.mybatisplus.convertor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.api.persistence.mybatisplus.entity.RunEventEntity;
-import com.xg.platform.contracts.message.RunEvent;
+import com.xg.platform.contracts.shared.event.RunEvent;
 
 public class RunEventPersistenceConvertor {
 

@@ -8,19 +8,19 @@ import com.xg.platform.agent.core.ExecutionSource;
 import com.xg.platform.agent.core.ResearchPlan;
 import com.xg.platform.agent.core.ResearchUnit;
 import com.xg.platform.agent.core.ToolUseLimits;
-import com.xg.platform.agent.core.chat.ChatRouteKind;
-import com.xg.platform.agent.core.interaction.DocumentQaScratchpad;
-import com.xg.platform.agent.core.interaction.DocumentQuestionType;
-import com.xg.platform.agent.core.research.execution.ResearchSessionState;
+import com.xg.platform.conversation.domain.ConversationRouteKind;
+import com.xg.platform.conversation.runtime.DocumentQaScratchpad;
+import com.xg.platform.conversation.runtime.DocumentQuestionType;
+import com.xg.platform.research.runtime.ResearchSessionState;
 import com.xg.platform.contracts.document.DocumentRecord;
 import com.xg.platform.contracts.document.DocumentStatus;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.ApprovedResearchPlan;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.contracts.message.PostMessageRequest;
-import com.xg.platform.contracts.message.ResearchPlanStep;
+import com.xg.platform.contracts.research.ApprovedResearchPlan;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.contracts.conversation.PostMessageRequest;
+import com.xg.platform.contracts.research.ResearchPlanStep;
 import com.xg.platform.contracts.research.ResearchAgendaItem;
 import com.xg.platform.contracts.research.ResearchEvidenceStatus;
 import com.xg.platform.contracts.research.ResearchFindingRecord;
@@ -31,8 +31,8 @@ import com.xg.platform.contracts.research.ResearchReportSection;
 import com.xg.platform.contracts.research.ResearchSourceKind;
 import com.xg.platform.contracts.research.ResearchSourceRecord;
 import com.xg.platform.contracts.skill.SkillDescriptor;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -43,6 +43,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.bsc.langgraph4j.serializer.Serializer.readUTF;
+import com.xg.platform.conversation.runtime.InteractionState;
+import com.xg.platform.research.runtime.ResearchTaskState;
+import com.xg.platform.shared.runtime.graph.PlatformJacksonStateSerializer;
 
 class PlatformJacksonStateSerializerTest {
 
@@ -51,14 +54,14 @@ class PlatformJacksonStateSerializerTest {
     @Test
     void roundTripsInteractionStateWithTypedValuesAsJson() throws Exception {
         PlatformJacksonStateSerializer<InteractionState> serializer = new PlatformJacksonStateSerializer<>(InteractionState::new, objectMapper);
-        ToolUseLimits toolUseLimits = new ToolUseLimits(6, 4, 2, 2, 1, 30_000L);
+        ToolUseLimits toolUseLimits = ToolUseLimits.fresh(6, 4, 2, 2, 1, 30_000L);
         byte[] thoughtSignature = new byte[]{1, 2, 3};
         assertThat(toolUseLimits.tryAcquire("web_search")).isTrue();
         assertThat(toolUseLimits.tryAcquire("web_fetch")).isTrue();
 
         Map<String, Object> data = Map.ofEntries(
                 Map.entry(InteractionState.REQUEST, new PostMessageRequest("hello", InteractionMode.CHAT, "gemini", List.of("image-1"), List.of("doc-1"))),
-                Map.entry(InteractionState.ROUTE_KIND, ChatRouteKind.DOCUMENT_QA),
+                Map.entry(InteractionState.ROUTE_KIND, ConversationRouteKind.DOCUMENT_QA),
                 Map.entry(InteractionState.AVAILABLE_SKILLS, List.of(skillDescriptor())),
                 Map.entry(InteractionState.AVAILABLE_TOOLS, List.of(toolDescriptor())),
                 Map.entry(InteractionState.MESSAGES, List.of(AgentGraphMessage.assistant(
@@ -110,7 +113,7 @@ class PlatformJacksonStateSerializerTest {
 
         assertThat(json).contains("\"availableSkills\"");
         assertThat(json).contains(PlatformJacksonStateSerializer.TYPE_PROPERTY);
-        assertThat(restored.routeKind()).contains(ChatRouteKind.DOCUMENT_QA);
+        assertThat(restored.routeKind()).contains(ConversationRouteKind.DOCUMENT_QA);
         assertThat(restored.<PostMessageRequest>request()).contains(new PostMessageRequest("hello", InteractionMode.CHAT, "gemini", List.of("image-1"), List.of("doc-1")));
         assertThat(restored.<SkillDescriptor>availableSkills()).singleElement().isEqualTo(skillDescriptor());
         assertThat(restored.<ToolDescriptor>availableTools()).singleElement().extracting(ToolDescriptor::name).isEqualTo("search_document");

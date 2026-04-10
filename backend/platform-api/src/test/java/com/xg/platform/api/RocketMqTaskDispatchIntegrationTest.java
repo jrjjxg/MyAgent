@@ -4,12 +4,12 @@ import com.xg.platform.api.config.AsyncConfig;
 import com.xg.platform.api.config.PlatformPropertiesConfig;
 import com.xg.platform.api.messaging.rocketmq.RocketMqTaskConsumer;
 import com.xg.platform.api.messaging.rocketmq.RocketMqTaskDispatcher;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.runtime.LongTermMemoryJobProcessor;
-import com.xg.platform.runtime.MemoryEventProcessor;
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskDispatcher;
-import com.xg.platform.runtime.TaskProcessor;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.memory.port.LongTermMemoryJobProcessor;
+import com.xg.platform.memory.port.MemoryEventProcessor;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
+import com.xg.platform.shared.runtime.async.TaskProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -61,7 +61,7 @@ class RocketMqTaskDispatchIntegrationTest {
     void dispatchesTasksThroughRocketMq() throws Exception {
         assertThat(taskDispatcher).isInstanceOf(RocketMqTaskDispatcher.class);
 
-        TaskDispatchRequest request = new TaskDispatchRequest(
+        TaskDispatchRequest request = TaskDispatchRequest.of(
                 "user-rocketmq",
                 "thread-rocketmq",
                 "task-rocketmq",

@@ -1,11 +1,11 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.contracts.agent.AgentCapability;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.ThreadFileReference;
-import com.xg.platform.agent.core.chat.ChatRouteKind;
-import com.xg.platform.tools.SkillRuntimeSnapshot;
+import com.xg.platform.contracts.shared.agent.AgentCapability;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
+import com.xg.platform.conversation.domain.ConversationRouteKind;
+import com.xg.platform.skill.runtime.SkillRuntimeSnapshot;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ public record AgentExecutionRequest(
         List<MessageRecord> recentMessages,
         String sessionSummary,
         String longTermMemory,
-        ChatRouteKind chatRouteKind,
+        ConversationRouteKind chatRouteKind,
         SkillRuntimeSnapshot skillRuntimeSnapshot,
         ToolUseLimits toolUseLimits,
         List<String> activeSkillIds,
@@ -42,316 +42,185 @@ public record AgentExecutionRequest(
         selectedDocumentIds = selectedDocumentIds == null ? List.of() : List.copyOf(selectedDocumentIds);
     }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<ThreadFileReference> inputImages,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                inputImages,
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                null,
-                null,
-                null,
-                List.of(),
-                List.of()
-        );
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<ThreadFileReference> inputImages,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                inputImages,
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind,
-                null,
-                null,
-                List.of(),
-                List.of()
-        );
+    public Builder toBuilder() {
+        return new Builder(this);
     }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<ThreadFileReference> inputImages,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind,
-                                 SkillRuntimeSnapshot skillRuntimeSnapshot,
-                                 ToolUseLimits toolUseLimits) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                inputImages,
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind,
-                skillRuntimeSnapshot,
-                toolUseLimits,
-                List.of(),
-                List.of()
-        );
-    }
+    public static final class Builder {
+        private String userId;
+        private String threadId;
+        private String runId;
+        private String message;
+        private String agentId;
+        private String providerId;
+        private List<AgentCapability> requestedCapabilities = List.of();
+        private List<String> skillIds = List.of();
+        private String skillSelectionMode;
+        private List<ArtifactRecord> artifacts = List.of();
+        private List<ThreadFileReference> uploadedFiles = List.of();
+        private List<ThreadFileReference> inputImages = List.of();
+        private List<MessageRecord> recentMessages = List.of();
+        private String sessionSummary;
+        private String longTermMemory;
+        private ConversationRouteKind chatRouteKind;
+        private SkillRuntimeSnapshot skillRuntimeSnapshot;
+        private ToolUseLimits toolUseLimits;
+        private List<String> activeSkillIds = List.of();
+        private List<String> selectedDocumentIds = List.of();
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                List.of(),
-                recentMessages,
-                sessionSummary,
-                longTermMemory
-        );
-    }
+        private Builder() {
+        }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                List.of(),
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind
-        );
-    }
+        private Builder(AgentExecutionRequest request) {
+            this.userId = request.userId();
+            this.threadId = request.threadId();
+            this.runId = request.runId();
+            this.message = request.message();
+            this.agentId = request.agentId();
+            this.providerId = request.providerId();
+            this.requestedCapabilities = request.requestedCapabilities();
+            this.skillIds = request.skillIds();
+            this.skillSelectionMode = request.skillSelectionMode();
+            this.artifacts = request.artifacts();
+            this.uploadedFiles = request.uploadedFiles();
+            this.inputImages = request.inputImages();
+            this.recentMessages = request.recentMessages();
+            this.sessionSummary = request.sessionSummary();
+            this.longTermMemory = request.longTermMemory();
+            this.chatRouteKind = request.chatRouteKind();
+            this.skillRuntimeSnapshot = request.skillRuntimeSnapshot();
+            this.toolUseLimits = request.toolUseLimits();
+            this.activeSkillIds = request.activeSkillIds();
+            this.selectedDocumentIds = request.selectedDocumentIds();
+        }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind,
-                                 SkillRuntimeSnapshot skillRuntimeSnapshot,
-                                 ToolUseLimits toolUseLimits) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                List.of(),
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind,
-                skillRuntimeSnapshot,
-                toolUseLimits
-        );
-    }
+        public Builder userId(String userId) {
+            this.userId = userId;
+            return this;
+        }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind,
-                                 SkillRuntimeSnapshot skillRuntimeSnapshot,
-                                 ToolUseLimits toolUseLimits,
-                                 List<String> activeSkillIds) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                List.of(),
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind,
-                skillRuntimeSnapshot,
-                toolUseLimits,
-                activeSkillIds,
-                List.of()
-        );
-    }
+        public Builder threadId(String threadId) {
+            this.threadId = threadId;
+            return this;
+        }
 
-    public AgentExecutionRequest(String userId,
-                                 String threadId,
-                                 String runId,
-                                 String message,
-                                 String agentId,
-                                 String providerId,
-                                 List<AgentCapability> requestedCapabilities,
-                                 List<String> skillIds,
-                                 String skillSelectionMode,
-                                 List<ArtifactRecord> artifacts,
-                                 List<ThreadFileReference> uploadedFiles,
-                                 List<MessageRecord> recentMessages,
-                                 String sessionSummary,
-                                 String longTermMemory,
-                                 ChatRouteKind chatRouteKind,
-                                 SkillRuntimeSnapshot skillRuntimeSnapshot,
-                                 ToolUseLimits toolUseLimits,
-                                 List<String> activeSkillIds,
-                                 List<String> selectedDocumentIds) {
-        this(
-                userId,
-                threadId,
-                runId,
-                message,
-                agentId,
-                providerId,
-                requestedCapabilities,
-                skillIds,
-                skillSelectionMode,
-                artifacts,
-                uploadedFiles,
-                List.of(),
-                recentMessages,
-                sessionSummary,
-                longTermMemory,
-                chatRouteKind,
-                skillRuntimeSnapshot,
-                toolUseLimits,
-                activeSkillIds,
-                selectedDocumentIds
-        );
+        public Builder runId(String runId) {
+            this.runId = runId;
+            return this;
+        }
+
+        public Builder message(String message) {
+            this.message = message;
+            return this;
+        }
+
+        public Builder agentId(String agentId) {
+            this.agentId = agentId;
+            return this;
+        }
+
+        public Builder providerId(String providerId) {
+            this.providerId = providerId;
+            return this;
+        }
+
+        public Builder requestedCapabilities(List<AgentCapability> requestedCapabilities) {
+            this.requestedCapabilities = requestedCapabilities;
+            return this;
+        }
+
+        public Builder skillIds(List<String> skillIds) {
+            this.skillIds = skillIds;
+            return this;
+        }
+
+        public Builder skillSelectionMode(String skillSelectionMode) {
+            this.skillSelectionMode = skillSelectionMode;
+            return this;
+        }
+
+        public Builder artifacts(List<ArtifactRecord> artifacts) {
+            this.artifacts = artifacts;
+            return this;
+        }
+
+        public Builder uploadedFiles(List<ThreadFileReference> uploadedFiles) {
+            this.uploadedFiles = uploadedFiles;
+            return this;
+        }
+
+        public Builder inputImages(List<ThreadFileReference> inputImages) {
+            this.inputImages = inputImages;
+            return this;
+        }
+
+        public Builder recentMessages(List<MessageRecord> recentMessages) {
+            this.recentMessages = recentMessages;
+            return this;
+        }
+
+        public Builder sessionSummary(String sessionSummary) {
+            this.sessionSummary = sessionSummary;
+            return this;
+        }
+
+        public Builder longTermMemory(String longTermMemory) {
+            this.longTermMemory = longTermMemory;
+            return this;
+        }
+
+        public Builder chatRouteKind(ConversationRouteKind chatRouteKind) {
+            this.chatRouteKind = chatRouteKind;
+            return this;
+        }
+
+        public Builder skillRuntimeSnapshot(SkillRuntimeSnapshot skillRuntimeSnapshot) {
+            this.skillRuntimeSnapshot = skillRuntimeSnapshot;
+            return this;
+        }
+
+        public Builder toolUseLimits(ToolUseLimits toolUseLimits) {
+            this.toolUseLimits = toolUseLimits;
+            return this;
+        }
+
+        public Builder activeSkillIds(List<String> activeSkillIds) {
+            this.activeSkillIds = activeSkillIds;
+            return this;
+        }
+
+        public Builder selectedDocumentIds(List<String> selectedDocumentIds) {
+            this.selectedDocumentIds = selectedDocumentIds;
+            return this;
+        }
+
+        public AgentExecutionRequest build() {
+            return new AgentExecutionRequest(
+                    userId,
+                    threadId,
+                    runId,
+                    message,
+                    agentId,
+                    providerId,
+                    requestedCapabilities,
+                    skillIds,
+                    skillSelectionMode,
+                    artifacts,
+                    uploadedFiles,
+                    inputImages,
+                    recentMessages,
+                    sessionSummary,
+                    longTermMemory,
+                    chatRouteKind,
+                    skillRuntimeSnapshot,
+                    toolUseLimits,
+                    activeSkillIds,
+                    selectedDocumentIds
+            );
+        }
     }
 }

@@ -3,16 +3,16 @@ package com.xg.platform.agent.core.application;
 import com.xg.platform.contracts.memory.CachedThreadMemoryRecord;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.contracts.message.ResearchDraftStatus;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.contracts.task.TaskStatus;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.contracts.research.ResearchDraftStatus;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.contracts.shared.task.TaskStatus;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +33,23 @@ public class ShortTermMemoryProjectionService {
     private final TaskRepository taskRepository;
     private final int windowSize;
 
+    public static ShortTermMemoryProjectionService withDefaultCompressor(MessageRepository messageRepository,
+                                                                         ThreadMemorySnapshotRepository threadMemorySnapshotRepository,
+                                                                         ThreadMemoryViewCache threadMemoryViewCache,
+                                                                         ResearchDraftRepository researchDraftRepository,
+                                                                         TaskRepository taskRepository,
+                                                                         int windowSize) {
+        return new ShortTermMemoryProjectionService(
+                messageRepository,
+                threadMemorySnapshotRepository,
+                threadMemoryViewCache,
+                SimpleConversationSummaryCompressor.defaults(),
+                researchDraftRepository,
+                taskRepository,
+                windowSize
+        );
+    }
+
     public ShortTermMemoryProjectionService(MessageRepository messageRepository,
                                             ThreadMemorySnapshotRepository threadMemorySnapshotRepository,
                                             ThreadMemoryViewCache threadMemoryViewCache,
@@ -44,28 +61,11 @@ public class ShortTermMemoryProjectionService {
         this.threadMemorySnapshotRepository = threadMemorySnapshotRepository;
         this.threadMemoryViewCache = threadMemoryViewCache;
         this.conversationSummaryCompressor = conversationSummaryCompressor == null
-                ? new SimpleConversationSummaryCompressor()
+                ? SimpleConversationSummaryCompressor.defaults()
                 : conversationSummaryCompressor;
         this.researchDraftRepository = researchDraftRepository;
         this.taskRepository = taskRepository;
         this.windowSize = Math.max(1, windowSize);
-    }
-
-    public ShortTermMemoryProjectionService(MessageRepository messageRepository,
-                                            ThreadMemorySnapshotRepository threadMemorySnapshotRepository,
-                                            ThreadMemoryViewCache threadMemoryViewCache,
-                                            ResearchDraftRepository researchDraftRepository,
-                                            TaskRepository taskRepository,
-                                            int windowSize) {
-        this(
-                messageRepository,
-                threadMemorySnapshotRepository,
-                threadMemoryViewCache,
-                new SimpleConversationSummaryCompressor(),
-                researchDraftRepository,
-                taskRepository,
-                windowSize
-        );
     }
 
     public ThreadMemoryView refreshThreadMemoryView(String userId, String threadId) {

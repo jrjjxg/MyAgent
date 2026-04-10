@@ -1,7 +1,7 @@
 package com.xg.platform.api.ai;
 
 import com.xg.platform.agent.core.AgentExecutionRequest;
-import com.xg.platform.contracts.message.ThreadFileReference;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -138,28 +138,10 @@ final class ImageInputOcrFallbackService {
     }
 
     private AgentExecutionRequest copyWithMessageAndNoImages(AgentExecutionRequest request, String message) {
-        return new AgentExecutionRequest(
-                request.userId(),
-                request.threadId(),
-                request.runId(),
-                message,
-                request.agentId(),
-                request.providerId(),
-                request.requestedCapabilities(),
-                request.skillIds(),
-                request.skillSelectionMode(),
-                request.artifacts(),
-                request.uploadedFiles(),
-                List.of(),
-                request.recentMessages(),
-                request.sessionSummary(),
-                request.longTermMemory(),
-                request.chatRouteKind(),
-                request.skillRuntimeSnapshot(),
-                request.toolUseLimits(),
-                request.activeSkillIds(),
-                request.selectedDocumentIds()
-        );
+        return request.toBuilder()
+                .message(message)
+                .inputImages(List.of())
+                .build();
     }
 
     private String mergeMessageWithOcr(String originalMessage, List<OcrSection> sections) {

@@ -15,23 +15,24 @@ import com.xg.platform.agent.core.ResearchUnitResult;
 import com.xg.platform.agent.core.ToolExecutionGuard;
 import com.xg.platform.agent.core.ToolUseLimits;
 import com.xg.platform.contracts.document.DocumentRecord;
-import com.xg.platform.contracts.message.ApprovedResearchPlan;
-import com.xg.platform.contracts.message.ResearchPlanStep;
-import com.xg.platform.contracts.message.RunEventType;
+import com.xg.platform.contracts.research.ApprovedResearchPlan;
+import com.xg.platform.contracts.research.ResearchPlanStep;
+import com.xg.platform.contracts.shared.event.RunEventType;
 import com.xg.platform.contracts.research.ReportCitation;
 import com.xg.platform.contracts.research.ResearchSourceKind;
 import com.xg.platform.contracts.research.ResearchSourceRecord;
 import com.xg.platform.contracts.skill.SkillDescriptor;
-import com.xg.platform.memory.ChunkIndexStore;
-import com.xg.platform.memory.ContextAssembler;
-import com.xg.platform.memory.DocumentChunk;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.memory.RetrievedChunk;
-import com.xg.platform.tools.SkillRuntimeSnapshot;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
+import com.xg.platform.document.application.ChunkIndexStore;
+import com.xg.platform.document.application.ContextAssembler;
+import com.xg.platform.document.domain.DocumentChunk;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.document.domain.RetrievedChunk;
+import com.xg.platform.research.runtime.ResearchEvidenceSupport;
+import com.xg.platform.skill.runtime.SkillRuntimeSnapshot;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -66,34 +67,15 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
     private final int minVerifiedSources;
     private final long timeoutMs;
 
-    public DefaultResearchExecutionSupport(SkillRegistry skillRegistry,
-                                           AgentToolService agentToolService,
-                                           DocumentStore documentStore,
-                                           DocumentIngestService documentIngestService,
-                                           ChunkIndexStore chunkIndexStore,
-                                           ContextAssembler contextAssembler,
-                                           AgentTurnExecutionSupport agentTurnExecutionSupport,
-                                           ObjectMapper objectMapper,
-                                           boolean logAgentFlow,
-                                           boolean logModelResponses) {
-        this(
-                skillRegistry,
-                agentToolService,
-                documentStore,
-                documentIngestService,
-                chunkIndexStore,
-                contextAssembler,
-                agentTurnExecutionSupport,
-                objectMapper,
-                logAgentFlow,
-                logModelResponses,
-                6,
-                3,
-                3,
-                1,
-                1,
-                120_000L
-        );
+    public record Limits(int maxToolCalls,
+                         int maxSearchCalls,
+                         int maxFetchCalls,
+                         int reflectionAfterSearches,
+                         int minVerifiedSources,
+                         long timeoutMs) {
+        public static Limits defaults() {
+            return new Limits(6, 3, 3, 1, 1, 120_000L);
+        }
     }
 
     public DefaultResearchExecutionSupport(SkillRegistry skillRegistry,
@@ -106,12 +88,7 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
                                            ObjectMapper objectMapper,
                                            boolean logAgentFlow,
                                            boolean logModelResponses,
-                                           int maxToolCalls,
-                                           int maxSearchCalls,
-                                           int maxFetchCalls,
-                                           int reflectionAfterSearches,
-                                           int minVerifiedSources,
-                                           long timeoutMs) {
+                                           Limits limits) {
         this.skillRegistry = skillRegistry;
         this.agentToolService = agentToolService;
         this.documentStore = documentStore;
@@ -123,12 +100,12 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
         this.logAgentFlow = logAgentFlow;
         this.logModelResponses = logModelResponses;
         this.researchUnitAgentRunner = new ResearchUnitAgentRunner(agentTurnExecutionSupport);
-        this.maxToolCalls = maxToolCalls;
-        this.maxSearchCalls = maxSearchCalls;
-        this.maxFetchCalls = maxFetchCalls;
-        this.reflectionAfterSearches = reflectionAfterSearches;
-        this.minVerifiedSources = minVerifiedSources;
-        this.timeoutMs = timeoutMs;
+        this.maxToolCalls = limits.maxToolCalls();
+        this.maxSearchCalls = limits.maxSearchCalls();
+        this.maxFetchCalls = limits.maxFetchCalls();
+        this.reflectionAfterSearches = limits.reflectionAfterSearches();
+        this.minVerifiedSources = limits.minVerifiedSources();
+        this.timeoutMs = limits.timeoutMs();
     }
 
     @Override
@@ -180,7 +157,7 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
         AgentExecutionRequest unitRequest = withRuntimeContext(
                 request,
                 snapshot,
-                new ToolUseLimits(
+                ToolUseLimits.fresh(
                         maxToolCalls,
                         maxSearchCalls,
                         maxFetchCalls,
@@ -631,15 +608,16 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
         ToolExecutionResult executionResult = ToolExecutionGuard.execute(
                 toolName,
                 request.toolUseLimits() == null ? 120_000L : request.toolUseLimits().timeoutMs(),
-                () -> agentToolService.execute(new ToolExecutionRequest(
-                        request.userId(),
-                        request.threadId(),
-                        request.runId(),
-                        toolDescriptor,
-                        arguments,
-                        request.skillRuntimeSnapshot(),
-                        request.activeSkillIds()
-                ))
+                () -> agentToolService.execute(ToolExecutionRequest.builder()
+                        .userId(request.userId())
+                        .threadId(request.threadId())
+                        .runId(request.runId())
+                        .tool(toolDescriptor)
+                        .arguments(arguments)
+                        .skillRuntimeSnapshot(request.skillRuntimeSnapshot())
+                        .activeSkillIds(request.activeSkillIds())
+                        .allowedDocumentIds(request.selectedDocumentIds())
+                        .build())
         );
         return executionResult.output();
     }
@@ -666,28 +644,11 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
                                                      SkillRuntimeSnapshot snapshot,
                                                      ToolUseLimits toolUseLimits,
                                                      List<String> activeSkillIds) {
-        return new AgentExecutionRequest(
-                request.userId(),
-                request.threadId(),
-                request.runId(),
-                request.message(),
-                request.agentId(),
-                request.providerId(),
-                request.requestedCapabilities(),
-                request.skillIds(),
-                request.skillSelectionMode(),
-                request.artifacts(),
-                request.uploadedFiles(),
-                request.inputImages(),
-                request.recentMessages(),
-                request.sessionSummary(),
-                request.longTermMemory(),
-                request.chatRouteKind(),
-                snapshot,
-                toolUseLimits,
-                activeSkillIds,
-                request.selectedDocumentIds()
-        );
+        return request.toBuilder()
+                .skillRuntimeSnapshot(snapshot)
+                .toolUseLimits(toolUseLimits)
+                .activeSkillIds(activeSkillIds)
+                .build();
     }
 
     private List<ToolDescriptor> researchAgentTools(String userId, boolean includeWeb) {
@@ -876,7 +837,7 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
     }
 
     private ResearchSourceRecord documentSourceRecord(String unitId, DocumentChunk chunk) {
-        return new ResearchSourceRecord(
+        return ResearchSourceRecord.basic(
                 "document_chunk:%s".formatted(textOrFallback(chunk.chunkId(), chunk.documentId() + ":" + chunk.pageStart())),
                 ResearchSourceKind.DOCUMENT_CHUNK,
                 chunk.documentName(),
@@ -889,7 +850,7 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
     }
 
     private ResearchSourceRecord webSearchSourceRecord(String unitId, String title, String url, String snippet) {
-        return new ResearchSourceRecord(
+        return ResearchSourceRecord.basic(
                 "web_result:%s".formatted(url),
                 ResearchSourceKind.WEB_RESULT,
                 textOrFallback(title, url),
@@ -902,7 +863,7 @@ public class DefaultResearchExecutionSupport implements ResearchExecutionSupport
     }
 
     private ResearchSourceRecord webPageSourceRecord(String unitId, String title, String url, String pageText) {
-        return new ResearchSourceRecord(
+        return ResearchSourceRecord.basic(
                 "web_page:%s".formatted(url),
                 ResearchSourceKind.WEB_PAGE,
                 textOrFallback(title, url),

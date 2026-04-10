@@ -1,6 +1,6 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.tools.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolDescriptor;
 
 import java.util.List;
 

@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskProcessor;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskProcessor;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

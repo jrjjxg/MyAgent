@@ -2,8 +2,8 @@ package com.xg.platform.api.ai;
 
 import com.xg.platform.agent.core.AgentExecutionRequest;
 import com.xg.platform.agent.core.AgentGraphMessage;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.ThreadFileReference;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;

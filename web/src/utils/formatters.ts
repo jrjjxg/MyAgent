@@ -177,6 +177,10 @@ export const HIDDEN_PROCESS_EVENT_TYPES = new Set([
   "message.delta",
   "message.accepted",
   "message.completed",
+  "model.thinking.started",
+  "model.thinking.delta",
+  "model.thinking",
+  "model.thinking.completed",
   "agent.step.started",
   "agent.step.delta",
   "agent.step.completed"

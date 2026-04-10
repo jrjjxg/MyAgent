@@ -8,24 +8,25 @@ import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.MemoryExtractionJobStatus;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
 import com.xg.platform.contracts.memory.UpdateLongTermMemoryRequest;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.contracts.message.RunEvent;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.contracts.shared.event.RunEvent;
 import com.xg.platform.contracts.research.ResearchTaskSnapshotRecord;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.contracts.task.TaskStatus;
-import com.xg.platform.contracts.thread.ThreadRecord;
-import com.xg.platform.contracts.thread.ThreadStatus;
-import com.xg.platform.runtime.LongTermMemoryRepository;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.ResearchTaskSnapshotRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
-import com.xg.platform.runtime.ThreadRepository;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.contracts.shared.task.TaskStatus;
+import com.xg.platform.memory.application.LongTermMemoryKeyRegistry;
+import com.xg.platform.contracts.workspace.ThreadRecord;
+import com.xg.platform.contracts.workspace.ThreadStatus;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.research.port.ResearchTaskSnapshotRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
+import com.xg.platform.workspace.port.ThreadRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -628,40 +629,59 @@ public final class InMemoryRuntimeSupport {
         }
 
         @Override
-        public synchronized Optional<LongTermMemoryRecord> findActiveByTitle(String userId, String title) {
-            return memoryByUser.getOrDefault(userId, List.of()).stream()
-                    .filter(memory -> memory.status() == LongTermMemoryStatus.ACTIVE && memory.title().equals(title))
-                    .findFirst();
-        }
-
-        @Override
         public synchronized Optional<LongTermMemoryRecord> findActiveByCanonicalKey(String userId,
                                                                                     LongTermMemoryType memoryType,
                                                                                     String canonicalKey) {
+            String normalizedKey = LongTermMemoryKeyRegistry.normalizeToken(canonicalKey);
+            if (normalizedKey == null) {
+                return Optional.empty();
+            }
             return memoryByUser.getOrDefault(userId, List.of()).stream()
                     .filter(memory -> memory.status() == LongTermMemoryStatus.ACTIVE
-                            && memory.memoryType() == memoryType
-                            && java.util.Objects.equals(memory.canonicalKey(), canonicalKey))
+                            && memory.memoryType() == normalizeType(memoryType)
+                            && java.util.Objects.equals(memory.canonicalKey(), normalizedKey))
                     .findFirst();
         }
 
         @Override
         public synchronized LongTermMemoryRecord create(String userId, CreateLongTermMemoryRequest request) {
+            LongTermMemoryKeyRegistry.NormalizedMemory normalizedMemory = LongTermMemoryKeyRegistry.normalizeForWrite(
+                    request.memoryType(),
+                    request.canonicalKey(),
+                    request.title(),
+                    request.sourceMessageId()
+            );
+            Optional<LongTermMemoryRecord> existing = normalizedMemory.memoryType() == LongTermMemoryType.EPISODIC
+                    ? findActiveEpisodicBySourceMessageId(userId, request.sourceMessageId())
+                    : findActiveByCanonicalKey(userId, normalizedMemory.memoryType(), normalizedMemory.canonicalKey());
+            if (existing.isPresent()) {
+                return update(userId, existing.orElseThrow().memoryId(), new UpdateLongTermMemoryRequest(
+                        normalizedMemory.memoryType(),
+                        normalizedMemory.canonicalKey(),
+                        request.title(),
+                        request.content(),
+                        request.valueJson(),
+                        request.sourceThreadId(),
+                        request.sourceMessageId(),
+                        request.sourceTaskId()
+                ));
+            }
             Instant now = Instant.now();
             LongTermMemoryRecord record = new LongTermMemoryRecord(
                     UUID.randomUUID().toString(),
                     userId,
-                    request.memoryType() == null ? LongTermMemoryType.SEMANTIC : request.memoryType(),
-                    request.canonicalKey(),
-                    request.title(),
-                    request.content(),
-                    request.sourceThreadId(),
-                    request.sourceMessageId(),
-                    request.sourceTaskId(),
+                    normalizedMemory.memoryType(),
+                    normalizedMemory.canonicalKey(),
+                    trim(request.title()),
+                    trim(request.content()),
+                    request.valueJson(),
+                    trim(request.sourceThreadId()),
+                    trim(request.sourceMessageId()),
+                    trim(request.sourceTaskId()),
                     LongTermMemoryStatus.ACTIVE,
                     now,
                     now
-            );
+                );
             memoryByUser.computeIfAbsent(userId, ignored -> new ArrayList<>()).add(record);
             return record;
         }
@@ -672,16 +692,30 @@ public final class InMemoryRuntimeSupport {
             for (int index = 0; index < records.size(); index++) {
                 LongTermMemoryRecord existing = records.get(index);
                 if (existing.memoryId().equals(memoryId)) {
+                    LongTermMemoryType targetType = request.memoryType() == null ? existing.memoryType() : request.memoryType();
+                    String targetTitle = trimOrDefault(request.title(), existing.title());
+                    String targetSourceMessageId = trimOrDefault(request.sourceMessageId(), existing.sourceMessageId());
+                    LongTermMemoryKeyRegistry.NormalizedMemory normalizedMemory = LongTermMemoryKeyRegistry.normalizeForWrite(
+                            targetType,
+                            request.canonicalKey() == null ? existing.canonicalKey() : request.canonicalKey(),
+                            targetTitle,
+                            targetSourceMessageId
+                    );
+                    if (normalizedMemory.memoryType() == LongTermMemoryType.EPISODIC) {
+                        assertUniqueActiveEpisodeSourceMessage(userId, memoryId, targetSourceMessageId);
+                    }
+                    assertUniqueActiveKey(userId, memoryId, normalizedMemory.memoryType(), normalizedMemory.canonicalKey());
                     LongTermMemoryRecord updated = new LongTermMemoryRecord(
                             existing.memoryId(),
                             existing.userId(),
-                            request.memoryType() == null ? existing.memoryType() : request.memoryType(),
-                            request.canonicalKey() == null ? existing.canonicalKey() : request.canonicalKey(),
-                            request.title() == null ? existing.title() : request.title(),
-                            request.content() == null ? existing.content() : request.content(),
-                            request.sourceThreadId() == null ? existing.sourceThreadId() : request.sourceThreadId(),
-                            request.sourceMessageId() == null ? existing.sourceMessageId() : request.sourceMessageId(),
-                            request.sourceTaskId() == null ? existing.sourceTaskId() : request.sourceTaskId(),
+                            normalizedMemory.memoryType(),
+                            normalizedMemory.canonicalKey(),
+                            targetTitle,
+                            trimOrDefault(request.content(), existing.content()),
+                            request.valueJson() == null ? existing.valueJson() : request.valueJson(),
+                            trimOrDefault(request.sourceThreadId(), existing.sourceThreadId()),
+                            targetSourceMessageId,
+                            trimOrDefault(request.sourceTaskId(), existing.sourceTaskId()),
                             existing.status(),
                             existing.createdAt(),
                             Instant.now()
@@ -707,6 +741,7 @@ public final class InMemoryRuntimeSupport {
                             existing.canonicalKey(),
                             existing.title(),
                             existing.content(),
+                            existing.valueJson(),
                             existing.sourceThreadId(),
                             existing.sourceMessageId(),
                             existing.sourceTaskId(),
@@ -735,6 +770,7 @@ public final class InMemoryRuntimeSupport {
                             existing.canonicalKey(),
                             existing.title(),
                             existing.content(),
+                            existing.valueJson(),
                             existing.sourceThreadId(),
                             existing.sourceMessageId(),
                             existing.sourceTaskId(),
@@ -747,6 +783,54 @@ public final class InMemoryRuntimeSupport {
             }
             memoryByUser.put(userId, records);
             return deleted;
+        }
+
+        private void assertUniqueActiveKey(String userId,
+                                           String memoryId,
+                                           LongTermMemoryType memoryType,
+                                           String canonicalKey) {
+            boolean duplicate = memoryByUser.getOrDefault(userId, List.of()).stream()
+                    .filter(memory -> memory.status() == LongTermMemoryStatus.ACTIVE)
+                    .filter(memory -> memory.memoryType() == memoryType)
+                    .filter(memory -> java.util.Objects.equals(memory.canonicalKey(), canonicalKey))
+                    .anyMatch(memory -> !memory.memoryId().equals(memoryId));
+            if (duplicate) {
+                throw new IllegalArgumentException("Long-term memory key already exists: " + canonicalKey);
+            }
+        }
+
+        private Optional<LongTermMemoryRecord> findActiveEpisodicBySourceMessageId(String userId, String sourceMessageId) {
+            if (sourceMessageId == null || sourceMessageId.isBlank()) {
+                return Optional.empty();
+            }
+            return memoryByUser.getOrDefault(userId, List.of()).stream()
+                    .filter(memory -> memory.status() == LongTermMemoryStatus.ACTIVE)
+                    .filter(memory -> memory.memoryType() == LongTermMemoryType.EPISODIC)
+                    .filter(memory -> java.util.Objects.equals(memory.sourceMessageId(), sourceMessageId.trim()))
+                    .findFirst();
+        }
+
+        private void assertUniqueActiveEpisodeSourceMessage(String userId, String memoryId, String sourceMessageId) {
+            boolean duplicate = memoryByUser.getOrDefault(userId, List.of()).stream()
+                    .filter(memory -> memory.status() == LongTermMemoryStatus.ACTIVE)
+                    .filter(memory -> memory.memoryType() == LongTermMemoryType.EPISODIC)
+                    .filter(memory -> java.util.Objects.equals(memory.sourceMessageId(), sourceMessageId))
+                    .anyMatch(memory -> !memory.memoryId().equals(memoryId));
+            if (duplicate) {
+                throw new IllegalArgumentException("Episodic memory source already exists: " + sourceMessageId);
+            }
+        }
+
+        private LongTermMemoryType normalizeType(LongTermMemoryType memoryType) {
+            return memoryType == null ? LongTermMemoryType.SEMANTIC : memoryType;
+        }
+
+        private String trim(String value) {
+            return value == null ? null : value.trim();
+        }
+
+        private String trimOrDefault(String value, String fallback) {
+            return value == null || value.isBlank() ? fallback : value.trim();
         }
     }
 

@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.tooling.application.BuiltinWebResearchClient;
 
 class BuiltinWebResearchClientTest {
 

@@ -2,7 +2,7 @@ package com.xg.platform.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -11,6 +11,14 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.tooling.application.BuiltinToolExecutor;
+import com.xg.platform.tooling.application.BuiltinWeatherClient;
+import com.xg.platform.tooling.application.McpServerRegistry;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
 
 class BuiltinToolExecutorTest {
 
@@ -41,13 +49,13 @@ class BuiltinToolExecutorTest {
                 .put("totalSteps", 3)
                 .put("focus", "Vendor positioning and ecosystem tradeoffs");
 
-        ToolExecutionResult result = executor.execute(new ToolExecutionRequest(
-                USER_ID,
-                THREAD_ID,
-                RUN_ID,
-                builtinTool(objectMapper, "research_reflect", ToolGroup.WORKSPACE),
-                arguments
-        ));
+        ToolExecutionResult result = executor.execute(ToolExecutionRequest.builder()
+                .userId(USER_ID)
+                .threadId(THREAD_ID)
+                .runId(RUN_ID)
+                .tool(builtinTool(objectMapper, "research_reflect", ToolGroup.WORKSPACE))
+                .arguments(arguments)
+                .build());
 
         assertThat(result.output().path("status").asText()).isEqualTo("reflected");
         assertThat(result.output().path("needsMoreEvidence").asBoolean()).isTrue();
@@ -89,16 +97,16 @@ class BuiltinToolExecutorTest {
                 objectMapper
         );
 
-        ToolExecutionResult result = executor.execute(new ToolExecutionRequest(
-                USER_ID,
-                THREAD_ID,
-                RUN_ID,
-                builtinTool(objectMapper, "weather", ToolGroup.SEARCH),
-                objectMapper.createObjectNode()
+        ToolExecutionResult result = executor.execute(ToolExecutionRequest.builder()
+                .userId(USER_ID)
+                .threadId(THREAD_ID)
+                .runId(RUN_ID)
+                .tool(builtinTool(objectMapper, "weather", ToolGroup.SEARCH))
+                .arguments(objectMapper.createObjectNode()
                         .put("location", "Tianjin")
                         .put("dayOffset", 1)
-                        .put("days", 1)
-        ));
+                        .put("days", 1))
+                .build());
 
         assertThat(result.output().path("location").asText()).isEqualTo("Tianjin");
         assertThat(result.output().path("condition").asText()).isEqualTo("Cloudy");
@@ -142,14 +150,14 @@ class BuiltinToolExecutorTest {
                 objectMapper
         );
 
-        ToolExecutionResult result = executor.execute(new ToolExecutionRequest(
-                USER_ID,
-                THREAD_ID,
-                RUN_ID,
-                builtinTool(objectMapper, "load_skill", ToolGroup.WORKSPACE),
-                objectMapper.createObjectNode().put("skillId", "weather"),
-                registry.snapshotForUser(USER_ID)
-        ));
+        ToolExecutionResult result = executor.execute(ToolExecutionRequest.builder()
+                .userId(USER_ID)
+                .threadId(THREAD_ID)
+                .runId(RUN_ID)
+                .tool(builtinTool(objectMapper, "load_skill", ToolGroup.WORKSPACE))
+                .arguments(objectMapper.createObjectNode().put("skillId", "weather"))
+                .skillRuntimeSnapshot(registry.snapshotForUser(USER_ID))
+                .build());
 
         assertThat(result.output().path("skillId").asText()).isEqualTo("weather");
         assertThat(result.output().path("sourceKey").asText()).isEqualTo("public:weather");
@@ -188,15 +196,15 @@ class BuiltinToolExecutorTest {
                 objectMapper
         );
 
-        ToolExecutionResult result = executor.execute(new ToolExecutionRequest(
-                USER_ID,
-                THREAD_ID,
-                RUN_ID,
-                builtinTool(objectMapper, "load_skill", ToolGroup.WORKSPACE),
-                objectMapper.createObjectNode().put("skillId", "weather"),
-                registry.snapshotForUser(USER_ID),
-                java.util.List.of("weather")
-        ));
+        ToolExecutionResult result = executor.execute(ToolExecutionRequest.builder()
+                .userId(USER_ID)
+                .threadId(THREAD_ID)
+                .runId(RUN_ID)
+                .tool(builtinTool(objectMapper, "load_skill", ToolGroup.WORKSPACE))
+                .arguments(objectMapper.createObjectNode().put("skillId", "weather"))
+                .skillRuntimeSnapshot(registry.snapshotForUser(USER_ID))
+                .activeSkillIds(java.util.List.of("weather"))
+                .build());
 
         assertThat(result.output().path("skillId").asText()).isEqualTo("weather");
         assertThat(result.output().path("alreadyLoaded").asBoolean()).isTrue();
@@ -230,17 +238,17 @@ class BuiltinToolExecutorTest {
                 objectMapper
         );
 
-        ToolExecutionResult result = executor.execute(new ToolExecutionRequest(
-                USER_ID,
-                THREAD_ID,
-                RUN_ID,
-                builtinTool(objectMapper, "load_skill_resource", ToolGroup.WORKSPACE),
-                objectMapper.createObjectNode()
+        ToolExecutionResult result = executor.execute(ToolExecutionRequest.builder()
+                .userId(USER_ID)
+                .threadId(THREAD_ID)
+                .runId(RUN_ID)
+                .tool(builtinTool(objectMapper, "load_skill_resource", ToolGroup.WORKSPACE))
+                .arguments(objectMapper.createObjectNode()
                         .put("skillId", "weather")
                         .put("resourcePath", "references/forecast.md")
-                        .put("maxChars", 12),
-                registry.snapshotForUser(USER_ID)
-        ));
+                        .put("maxChars", 12))
+                .skillRuntimeSnapshot(registry.snapshotForUser(USER_ID))
+                .build());
 
         assertThat(result.output().path("skillId").asText()).isEqualTo("weather");
         assertThat(result.output().path("resourcePath").asText()).isEqualTo("references/forecast.md");

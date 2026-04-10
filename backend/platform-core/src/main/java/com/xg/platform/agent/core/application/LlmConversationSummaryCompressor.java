@@ -1,7 +1,7 @@
 package com.xg.platform.agent.core.application;
 
 import com.xg.platform.agent.core.AgentTurnExecutionSupport;
-import com.xg.platform.contracts.message.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,7 @@ public class LlmConversationSummaryCompressor implements ConversationSummaryComp
         this.maxMessagesPerChunk = Math.max(1, maxMessagesPerChunk);
         this.maxCharsPerChunk = Math.max(400, maxCharsPerChunk);
         this.maxSummaryWords = Math.max(80, maxSummaryWords);
-        this.fallback = fallback == null ? new SimpleConversationSummaryCompressor() : fallback;
+        this.fallback = fallback == null ? SimpleConversationSummaryCompressor.defaults() : fallback;
         this.logAgentFlow = logAgentFlow;
     }
 

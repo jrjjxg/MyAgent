@@ -23,13 +23,13 @@ public final class ToolUseLimits implements Serializable {
     private final AtomicInteger reflectCalls = new AtomicInteger();
     private final AtomicInteger searchesSinceReflect = new AtomicInteger();
 
-    public ToolUseLimits(int maxToolCalls,
-                         int maxSearchCalls,
-                         int maxFetchCalls,
-                         int reflectionAfterSearches,
-                         int minVerifiedSources,
-                         long timeoutMs) {
-        this(maxToolCalls, maxSearchCalls, maxFetchCalls, reflectionAfterSearches, minVerifiedSources, timeoutMs, 0, 0, 0, 0, 0);
+    public static ToolUseLimits fresh(int maxToolCalls,
+                                      int maxSearchCalls,
+                                      int maxFetchCalls,
+                                      int reflectionAfterSearches,
+                                      int minVerifiedSources,
+                                      long timeoutMs) {
+        return new ToolUseLimits(maxToolCalls, maxSearchCalls, maxFetchCalls, reflectionAfterSearches, minVerifiedSources, timeoutMs, 0, 0, 0, 0, 0);
     }
 
     @JsonCreator

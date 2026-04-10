@@ -3,18 +3,18 @@ package com.xg.platform.api.upload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.xg.platform.agent.core.DocumentIngestService;
-import com.xg.platform.contracts.artifact.CreateUploadSessionRequest;
-import com.xg.platform.contracts.thread.ThreadRecord;
-import com.xg.platform.contracts.thread.ThreadStatus;
-import com.xg.platform.runtime.ThreadRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.runtime.WorkspaceRepository;
-import com.xg.platform.runtime.WorkspaceRuntimeService;
+import com.xg.platform.contracts.workspace.CreateUploadSessionRequest;
+import com.xg.platform.contracts.workspace.ThreadRecord;
+import com.xg.platform.contracts.workspace.ThreadStatus;
+import com.xg.platform.workspace.port.ThreadRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.port.WorkspaceRepository;
+import com.xg.platform.workspace.application.WorkspaceService;
 import com.xg.platform.contracts.workspace.WorkspaceRecord;
 import com.xg.platform.contracts.workspace.WorkspaceStatus;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.UploadService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.UploadService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,8 +41,8 @@ class ChunkedUploadServiceTest {
     @Test
     void createsSessionUploadsChunksAndCompletesArtifact() throws Exception {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
-        WorkspaceRuntimeService workspaceRuntimeService = new WorkspaceRuntimeService(new InMemoryWorkspaceRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
+        WorkspaceService workspaceRuntimeService = new WorkspaceService(new InMemoryWorkspaceRepository());
         String userId = "user-1";
         String threadId = threadRuntimeService.createThread(userId, "workspace-1", "Upload Thread").threadId();
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
@@ -91,8 +91,8 @@ class ChunkedUploadServiceTest {
     @Test
     void completesWorkspaceSessionAndReturnsIngestTaskId() throws Exception {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
-        WorkspaceRuntimeService workspaceRuntimeService = new WorkspaceRuntimeService(new InMemoryWorkspaceRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
+        WorkspaceService workspaceRuntimeService = new WorkspaceService(new InMemoryWorkspaceRepository());
         String userId = "user-1";
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);

@@ -9,9 +9,9 @@ import com.xg.platform.agent.core.AgentModelStep;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
 import com.xg.platform.agent.core.AgentTurnExecutionSupport;
-import com.xg.platform.contracts.message.RunEventType;
+import com.xg.platform.contracts.shared.event.RunEventType;
 import org.springframework.ai.chat.messages.Message;
-import com.xg.platform.tools.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolDescriptor;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -142,28 +142,11 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         return chatOptionsFactory.build(providerId, defaultModel, modelOverride, toolCallbacks, internalToolExecutionEnabled, includeGeminiThoughts);
     }
 
-    protected boolean shouldSuppressVisibleStreaming(String providerId,
-                                                     String model,
-                                                     List<ToolCallback> toolCallbacks) {
-        return "gemini".equalsIgnoreCase(providerId)
-                && toolCallbacks != null
-                && !toolCallbacks.isEmpty();
-    }
-
     protected String responseText(ChatResponse response) {
         if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
             return null;
         }
         return response.getResult().getOutput().getText();
-    }
-
-    protected AssistantMessage requireAssistantMessage(String providerId,
-                                                       ChatResponse response,
-                                                       String operation) {
-        if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
-            throw new IllegalStateException("No assistant message returned from provider " + providerId + " during " + operation);
-        }
-        return response.getResult().getOutput();
     }
 
     protected JsonNode parseArguments(String arguments) {
@@ -199,13 +182,6 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         throw new IllegalStateException("Provider " + providerId + " returned an empty response during " + operation);
     }
 
-    protected AgentModelStep toAgentModelStep(String providerId,
-                                              ChatResponse response,
-                                              String operation) {
-        AssistantResponseParts responseParts = splitAssistantResponse(providerId, response, operation);
-        return new AgentModelStep(responseParts.visibleText(), responseParts.toolCalls(), responseParts.assistantProperties());
-    }
-
     protected List<ToolCallback> createToolCallbacks(String providerId,
                                                      AgentExecutionRequest request,
                                                      List<ToolDescriptor> availableTools,
@@ -214,94 +190,13 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         return toolCallbackFactory.create(providerId, request, availableTools, outputEmitter, sourceCollector);
     }
 
-    protected String streamTextResponse(String providerId,
-                                        String model,
-                                        AgentExecutionRequest request,
-                                        Supplier<Iterable<ChatResponse>> streamSupplier,
-                                        AgentOutputEmitter outputEmitter,
-                                        boolean emitVisibleText) {
-        StringBuilder builder = new StringBuilder();
-        long startedAt = System.nanoTime();
-        int chunkCount = 0;
-        boolean firstChunkLogged = false;
-        logFlow(() -> "runModelLoop stream start provider=" + providerId
-                + " model=" + model
-                + " thread=" + request.threadId()
-                + " run=" + request.runId());
-        if (!emitVisibleText) {
-            outputEmitter.emitEvent(RunEventType.MODEL_THINKING_STARTED, Map.of(
-                    "providerId", providerId,
-                    "model", model
-            ));
-        }
-        try {
-            for (ChatResponse partialResponse : streamSupplier.get()) {
-                String delta = responseText(partialResponse);
-                if (delta == null || delta.isBlank()) {
-                    continue;
-                }
-                chunkCount++;
-                if (!firstChunkLogged) {
-                    firstChunkLogged = true;
-                    int firstChunkLength = delta.length();
-                    long firstChunkElapsedMs = elapsedMillis(startedAt);
-                    logFlow(() -> "runModelLoop stream first delta provider=" + providerId
-                            + " model=" + model
-                            + " thread=" + request.threadId()
-                            + " run=" + request.runId()
-                            + " elapsedMs=" + firstChunkElapsedMs
-                            + " chars=" + firstChunkLength);
-                }
-                builder.append(delta);
-                if (emitVisibleText) {
-                    outputEmitter.emitText(delta);
-                } else {
-                    outputEmitter.emitEvent(RunEventType.MODEL_THINKING_DELTA, Map.of("delta", delta));
-                }
-            }
-        } catch (RuntimeException exception) {
-            long failedElapsedMs = elapsedMillis(startedAt);
-            logger().log(Level.WARNING, "runModelLoop streaming fallback provider=" + providerId
-                    + " model=" + model
-                    + " thread=" + request.threadId()
-                    + " run=" + request.runId()
-                    + " elapsedMs=" + failedElapsedMs
-                    + " receivedChunks=" + chunkCount, exception);
-            return null;
-        }
-        String streamedText = builder.toString();
-        if (streamedText.isBlank()) {
-            long emptyElapsedMs = elapsedMillis(startedAt);
-            int emptyChunks = chunkCount;
-            logFlow(() -> "runModelLoop stream completed without text provider=" + providerId
-                    + " model=" + model
-                    + " thread=" + request.threadId()
-                    + " run=" + request.runId()
-                    + " elapsedMs=" + emptyElapsedMs
-                    + " receivedChunks=" + emptyChunks);
-            return null;
-        }
-        long elapsedMs = elapsedMillis(startedAt);
-        int totalChars = streamedText.length();
-        int completedChunks = chunkCount;
-        logFlow(() -> "runModelLoop stream finished provider=" + providerId
-                + " model=" + model
-                + " thread=" + request.threadId()
-                + " run=" + request.runId()
-                + " elapsedMs=" + elapsedMs
-                + " receivedChunks=" + completedChunks
-                + " chars=" + totalChars);
-        logModelResult(() -> "model result provider=" + providerId
-                + " operation=model loop stream"
-                + " text=" + summarize(streamedText));
-        return streamedText;
-    }
-
-    protected AgentModelStep streamSingleStep(String providerId,
-                                              String model,
-                                              AgentExecutionRequest request,
-                                              Supplier<Iterable<ChatResponse>> streamSupplier,
-                                              AgentOutputEmitter outputEmitter) {
+    protected AssistantResponseParts streamAssistantResponse(String providerId,
+                                                            String model,
+                                                            AgentExecutionRequest request,
+                                                            Supplier<Iterable<ChatResponse>> streamSupplier,
+                                                            AgentOutputEmitter outputEmitter,
+                                                            boolean emitVisibleText,
+                                                            String operation) {
         StringBuilder visibleBuilder = new StringBuilder();
         StringBuilder thinkingBuilder = new StringBuilder();
         List<AgentGraphToolCall> toolCalls = List.of();
@@ -309,9 +204,8 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         long startedAt = System.nanoTime();
         int chunkCount = 0;
         boolean firstChunkLogged = false;
-        boolean stepStarted = false;
         boolean thinkingStarted = false;
-        logFlow(() -> "runSingleStep stream start provider=" + providerId
+        logFlow(() -> operation + " start provider=" + providerId
                 + " model=" + model
                 + " thread=" + request.threadId()
                 + " run=" + request.runId());
@@ -342,26 +236,18 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
                 }
                 chunkCount++;
                 boolean thoughtDelta = isThoughtPart(output.getMetadata());
-                if (thoughtDelta) {
-                    if (!thinkingStarted) {
-                        thinkingStarted = true;
-                        outputEmitter.emitEvent(RunEventType.MODEL_THINKING_STARTED, Map.of(
-                                "providerId", request.providerId(),
-                                "runId", request.runId()
-                        ));
-                    }
-                } else if (!stepStarted) {
-                    stepStarted = true;
-                    outputEmitter.emitEvent(RunEventType.AGENT_STEP_STARTED, Map.of(
+                if (thoughtDelta && !thinkingStarted) {
+                    thinkingStarted = true;
+                    outputEmitter.emitEvent(RunEventType.MODEL_THINKING_STARTED, Map.of(
                             "providerId", request.providerId(),
                             "runId", request.runId()
-                        ));
+                    ));
                 }
                 if (!firstChunkLogged) {
                     firstChunkLogged = true;
                     int firstChunkLength = delta.length();
                     long firstChunkElapsedMs = elapsedMillis(startedAt);
-                    logFlow(() -> "runSingleStep stream first delta provider=" + providerId
+                    logFlow(() -> operation + " first delta provider=" + providerId
                             + " model=" + model
                             + " thread=" + request.threadId()
                             + " run=" + request.runId()
@@ -374,11 +260,13 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
                     continue;
                 }
                 visibleBuilder.append(delta);
-                outputEmitter.emitEvent(RunEventType.AGENT_STEP_DELTA, Map.of("delta", delta));
+                if (emitVisibleText) {
+                    outputEmitter.emitText(delta);
+                }
             }
         } catch (RuntimeException exception) {
             long failedElapsedMs = elapsedMillis(startedAt);
-            logger().log(Level.WARNING, "runSingleStep streaming fallback provider=" + providerId
+            logger().log(Level.WARNING, operation + " fallback provider=" + providerId
                     + " model=" + model
                     + " thread=" + request.threadId()
                     + " run=" + request.runId()
@@ -389,7 +277,7 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         if (visibleBuilder.isEmpty() && thinkingBuilder.isEmpty() && toolCalls.isEmpty() && assistantProperties.isEmpty()) {
             long emptyElapsedMs = elapsedMillis(startedAt);
             int emptyChunks = chunkCount;
-            logFlow(() -> "runSingleStep stream completed without assistant output provider=" + providerId
+            logFlow(() -> operation + " completed without assistant output provider=" + providerId
                     + " model=" + model
                     + " thread=" + request.threadId()
                     + " run=" + request.runId()
@@ -402,14 +290,11 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         if (!streamedThinking.isBlank()) {
             emitThinkingCompleted(outputEmitter, streamedThinking);
         }
-        if (!streamedText.isBlank()) {
-            emitAgentStepCompleted(outputEmitter, streamedText);
-        }
         long elapsedMs = elapsedMillis(startedAt);
         int totalChars = streamedText.length();
         int completedChunks = chunkCount;
         List<AgentGraphToolCall> completedToolCalls = toolCalls;
-        logFlow(() -> "runSingleStep stream finished provider=" + providerId
+        logFlow(() -> operation + " finished provider=" + providerId
                 + " model=" + model
                 + " thread=" + request.threadId()
                 + " run=" + request.runId()
@@ -419,10 +304,15 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
                 + " toolCalls=" + completedToolCalls.size());
         if (!streamedText.isBlank()) {
             logModelResult(() -> "model result provider=" + providerId
-                    + " operation=single step stream"
+                    + " operation=" + operation
                     + " text=" + summarize(streamedText));
         }
-        return new AgentModelStep(streamedText, completedToolCalls, assistantProperties);
+        return new AssistantResponseParts(
+                streamedText,
+                streamedThinking,
+                List.copyOf(completedToolCalls),
+                assistantProperties
+        );
     }
 
     protected AssistantResponseParts splitAssistantResponse(String providerId,
@@ -474,42 +364,6 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
                 List.copyOf(toolCalls),
                 assistantProperties
         );
-    }
-
-    protected void emitAgentStepTranscript(AgentExecutionRequest request,
-                                           AgentOutputEmitter outputEmitter,
-                                           String content) {
-        if (content == null || content.isBlank()) {
-            return;
-        }
-        outputEmitter.emitEvent(RunEventType.AGENT_STEP_STARTED, Map.of(
-                "providerId", request.providerId(),
-                "runId", request.runId()
-        ));
-        emitAgentStepDeltas(outputEmitter, content);
-        emitAgentStepCompleted(outputEmitter, content);
-    }
-
-    protected void emitAgentStepDeltas(AgentOutputEmitter outputEmitter, String text) {
-        if (text == null || text.isBlank()) {
-            return;
-        }
-        for (int index = 0; index < text.length(); index += 180) {
-            int end = Math.min(text.length(), index + 180);
-            outputEmitter.emitEvent(RunEventType.AGENT_STEP_DELTA, Map.of(
-                    "delta", text.substring(index, end)
-            ));
-        }
-    }
-
-    protected void emitAgentStepCompleted(AgentOutputEmitter outputEmitter, String content) {
-        if (content == null || content.isBlank()) {
-            return;
-        }
-        outputEmitter.emitEvent(RunEventType.AGENT_STEP_COMPLETED, Map.of(
-                "summary", summarize(content),
-                "content", content
-        ));
     }
 
     protected void emitThinkingTranscript(AgentExecutionRequest request,
@@ -705,19 +559,6 @@ abstract class AbstractSpringAiAgentTurnExecutionSupport implements AgentTurnExe
         Map<String, Object> merged = new LinkedHashMap<>(existing);
         merged.putAll(incoming);
         return Map.copyOf(merged);
-    }
-
-    protected String combineThinkingContent(String primaryThinking,
-                                            String secondaryThinking) {
-        String primary = primaryThinking == null ? "" : primaryThinking.trim();
-        String secondary = secondaryThinking == null ? "" : secondaryThinking.trim();
-        if (primary.isBlank()) {
-            return secondary;
-        }
-        if (secondary.isBlank()) {
-            return primary;
-        }
-        return primary + System.lineSeparator() + System.lineSeparator() + secondary;
     }
 
     private String blankFallback(String value, String fallback) {

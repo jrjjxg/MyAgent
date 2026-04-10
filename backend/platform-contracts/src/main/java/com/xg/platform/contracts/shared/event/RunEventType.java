@@ -1,0 +1,82 @@
+package com.xg.platform.contracts.shared.event;
+
+public enum RunEventType {
+    MESSAGE_ACCEPTED("message.accepted"),
+    RUN_STARTED("run.started"),
+    AGENT_SELECTED("agent.selected"),
+    ROUTE_SELECTED("route.selected"),
+    SKILL_SELECTED("skill.selected"),
+    SKILL_ACTIVATED("skill.activated"),
+    SKILL_LOADED("skill.loaded"),
+    SKILL_SOURCE_RESOLVED("skill.source.resolved"),
+    DRAFT_EDITING_STARTED("draft.editing.started"),
+    DRAFT_EDITING_COMPLETED("draft.editing.completed"),
+    RESEARCH_QUESTIONS_REQUESTED("research.questions.requested"),
+    RESEARCH_BRIEF_UPDATED("research.brief.updated"),
+    RESEARCH_BRIEF_READY("research.brief.ready"),
+    RESEARCH_PLAN_PREVIEW_UPDATED("research.plan.preview.updated"),
+    RESEARCH_PLAN_APPROVED("research.plan.approved"),
+    RESEARCH_PLAN_CREATED("research.plan.created"),
+    RESEARCH_PLAN_READY("research.plan.ready"),
+    RESEARCH_STEP_STARTED("research.step.started"),
+    RESEARCH_STEP_COMPLETED("research.step.completed"),
+    RESEARCH_ITERATION_STARTED("research.iteration.started"),
+    RESEARCH_QUERY_ISSUED("research.query.issued"),
+    RESEARCH_SOURCES_SELECTED("research.sources.selected"),
+    RESEARCH_SYNTHESIS_UPDATED("research.synthesis.updated"),
+    RESEARCH_GAP_DETECTED("research.gap.detected"),
+    RESEARCH_ITERATION_COMPLETED("research.iteration.completed"),
+    RESEARCH_CONVERGED("research.converged"),
+    RESEARCH_SITE_DISCOVERED("research.site.discovered"),
+    RESEARCH_ACTIVITY("research.activity"),
+    RESEARCH_AGENT_BUDGET_EXHAUSTED("research.agent.budget.exhausted"),
+    RESEARCH_AGENT_STOP_CONDITION_REACHED("research.agent.stop-condition.reached"),
+    RESEARCH_UNIT_STARTED("research.unit.started"),
+    RESEARCH_UNIT_COMPLETED("research.unit.completed"),
+    RESEARCH_FINDINGS_COMPRESSED("research.findings.compressed"),
+    RESEARCH_REPORT_CREATED("research.report.created"),
+    RESEARCH_REPORT_READY("research.report.ready"),
+    TASK_CREATED("task.created"),
+    TASK_STAGE_CHANGED("task.stage.changed"),
+    TASK_PROGRESS("task.progress"),
+    TASK_COMPLETED("task.completed"),
+    TASK_FAILED("task.failed"),
+    TASK_CANCELLED("task.cancelled"),
+    PLAN_CREATED("plan.created"),
+    EXPLORE_STARTED("explore.started"),
+    EXPLORE_ACTION("explore.action"),
+    EXPLORE_COMPLETED("explore.completed"),
+    VERIFY_STARTED("verify.started"),
+    VERIFY_COMPLETED("verify.completed"),
+    STAGE_STARTED("stage.started"),
+    STAGE_COMPLETED("stage.completed"),
+    TOOL_STARTED("tool.started"),
+    TOOL_COMPLETED("tool.completed"),
+    TOOL_FAILED("tool.failed"),
+    AGENT_STEP_STARTED("agent.step.started"),
+    AGENT_STEP_DELTA("agent.step.delta"),
+    AGENT_STEP_COMPLETED("agent.step.completed"),
+    MODEL_THINKING_STARTED("model.thinking.started"),
+    MODEL_THINKING_DELTA("model.thinking.delta"),
+    MODEL_THINKING("model.thinking"),
+    MODEL_THINKING_COMPLETED("model.thinking.completed"),
+    EVIDENCE_CANDIDATE_ADDED("evidence.candidate.added"),
+    EVIDENCE_VERIFIED_ADDED("evidence.verified.added"),
+    RESEARCH_UPGRADE_SUGGESTED("research.upgrade.suggested"),
+    MESSAGE_DELTA("message.delta"),
+    MESSAGE_COMPLETED("message.completed"),
+    MESSAGE_FAILED("message.failed"),
+    ARTIFACT_CREATED("artifact.created"),
+    RUN_COMPLETED("run.completed"),
+    RUN_FAILED("run.failed");
+
+    private final String value;
+
+    RunEventType(String value) {
+        this.value = value;
+    }
+
+    public String value() {
+        return value;
+    }
+}

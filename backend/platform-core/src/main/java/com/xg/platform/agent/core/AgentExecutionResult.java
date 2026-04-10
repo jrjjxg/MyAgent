@@ -1,7 +1,7 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.contracts.agent.AgentCapability;
-import com.xg.platform.agent.core.chat.ChatRouteKind;
+import com.xg.platform.contracts.shared.agent.AgentCapability;
+import com.xg.platform.conversation.domain.ConversationRouteKind;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ public record AgentExecutionResult(
         String finalContent,
         boolean persistFinalArtifact,
         String workflow,
-        ChatRouteKind routeKind,
+        ConversationRouteKind routeKind,
         boolean toolsEnabled,
         List<ExecutionSource> sources,
         int usedVerifiedSources
@@ -23,13 +23,13 @@ public record AgentExecutionResult(
         usedVerifiedSources = Math.max(0, usedVerifiedSources);
     }
 
-    public AgentExecutionResult(String agentId,
-                                String providerId,
-                                AgentCapability capability,
-                                String summary,
-                                String finalContent,
-                                boolean persistFinalArtifact) {
-        this(
+    public static AgentExecutionResult basic(String agentId,
+                                             String providerId,
+                                             AgentCapability capability,
+                                             String summary,
+                                             String finalContent,
+                                             boolean persistFinalArtifact) {
+        return new AgentExecutionResult(
                 agentId,
                 providerId,
                 capability,

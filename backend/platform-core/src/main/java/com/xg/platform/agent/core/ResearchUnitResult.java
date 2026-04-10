@@ -15,12 +15,12 @@ public record ResearchUnitResult(
         List<ResearchSourceRecord> sourceRecords
 ) implements Serializable {
 
-    public ResearchUnitResult(String unitId,
-                              String title,
-                              String query,
-                              String notes,
-                              String localConclusion,
-                              List<String> sources) {
-        this(unitId, title, query, notes, localConclusion, sources, List.of());
+    public static ResearchUnitResult withoutSourceRecords(String unitId,
+                                                          String title,
+                                                          String query,
+                                                          String notes,
+                                                          String localConclusion,
+                                                          List<String> sources) {
+        return new ResearchUnitResult(unitId, title, query, notes, localConclusion, sources, List.of());
     }
 }

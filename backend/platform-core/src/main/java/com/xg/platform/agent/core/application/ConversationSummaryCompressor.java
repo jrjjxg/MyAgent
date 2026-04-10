@@ -1,6 +1,6 @@
 package com.xg.platform.agent.core.application;
 
-import com.xg.platform.contracts.message.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
 
 import java.util.List;
 

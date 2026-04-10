@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.convertor.TaskPersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.entity.TaskEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.TaskMapper;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.contracts.task.TaskStatus;
-import com.xg.platform.runtime.TaskRepository;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.contracts.shared.task.TaskStatus;
+import com.xg.platform.shared.port.TaskRepository;
 
 import java.time.Instant;
 import java.util.List;

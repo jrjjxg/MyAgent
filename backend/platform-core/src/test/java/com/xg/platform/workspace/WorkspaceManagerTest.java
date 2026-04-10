@@ -9,6 +9,8 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.xg.platform.workspace.application.WorkspaceManager;
+import com.xg.platform.workspace.domain.ThreadWorkspace;
 
 class WorkspaceManagerTest {
 

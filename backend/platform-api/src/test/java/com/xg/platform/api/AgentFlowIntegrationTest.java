@@ -10,10 +10,10 @@ import com.xg.platform.agent.core.AgentExecutionRequest;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
 import com.xg.platform.agent.core.AgentTurnExecutionSupport;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +67,8 @@ class AgentFlowIntegrationTest {
         registry.add("platform.data-root", () -> DATA_ROOT.toString().replace('\\', '/'));
         registry.add("platform.dev-user-id", () -> "integration-user");
         registry.add("platform.ai.gemini.model", () -> "gemini-test-model");
+        registry.add("platform.model.providers.gemini.api-key", () -> "test-key");
+        registry.add("platform.ai.gemini.api-key", () -> "test-key");
         registry.add("platform.model.default-provider", () -> "gemini");
         registry.add("platform.skills-root", () -> Path.of("..", "..", "skills").normalize().toString().replace('\\', '/'));
         registry.add("platform.extensions-config-path", () -> Path.of("..", "..", "extensions.json").normalize().toString().replace('\\', '/'));
@@ -75,7 +77,7 @@ class AgentFlowIntegrationTest {
 
     @Test
     void createsThreadUploadsFileExecutesMessageAndExposesArtifactsAndTasks() throws Exception {
-        String userId = "user-a";
+        String userId = userId("user-a");
         String threadId = createThread(userId, "Integration Thread");
 
         mockMvc.perform(multipart("/threads/{threadId}/uploads", threadId)
@@ -139,7 +141,7 @@ class AgentFlowIntegrationTest {
 
     @Test
     void deepResearchProducesEditablePlanAndRunsTaskWithProgressEvents() throws Exception {
-        String userId = "user-dr";
+        String userId = userId("user-dr");
         String threadId = createThread(userId, "Deep Research Thread");
 
         mockMvc.perform(multipart("/threads/{threadId}/uploads", threadId)
@@ -226,10 +228,11 @@ class AgentFlowIntegrationTest {
 
     @Test
     void rejectsUnknownProviderBeforeStartingSseExecution() throws Exception {
-        String threadId = createThread("user-b", "Bad Provider Thread");
+        String userId = userId("user-b");
+        String threadId = createThread(userId, "Bad Provider Thread");
 
         mockMvc.perform(post("/threads/{threadId}/messages", threadId)
-                        .header("X-User-Id", "user-b")
+                        .header("X-User-Id", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -239,12 +242,12 @@ class AgentFlowIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Unknown provider: missing-provider"));
+                .andExpect(jsonPath("$.detail").value("Unsupported provider: missing-provider"));
     }
 
     @Test
     void exposesThreadMemoryAndExplicitLongTermMemoryApis() throws Exception {
-        String userId = "user-memory";
+        String userId = userId("user-memory");
         String threadId = createThread(userId, "Memory Thread");
 
         MvcResult asyncResult = mockMvc.perform(post("/threads/{threadId}/messages", threadId)
@@ -276,13 +279,15 @@ class AgentFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "memoryType": "SEMANTIC",
                                   "title": "Output style",
                                   "content": "Use concise bullet summaries when possible",
                                   "sourceThreadId": "%s"
                                 }
                                 """.formatted(threadId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.memoryId").isNotEmpty());
+                .andExpect(jsonPath("$.memoryId").isNotEmpty())
+                .andExpect(jsonPath("$.canonicalKey").value("semantic.preference.output_style"));
 
         mockMvc.perform(get("/memory/long-term").header("X-User-Id", userId))
                 .andExpect(status().isOk())
@@ -290,8 +295,8 @@ class AgentFlowIntegrationTest {
     }
 
     @Test
-    void exposesStructuredProfileAndStableFactApis() throws Exception {
-        String userId = "user-structured-memory";
+    void exposesStructuredProfileAndLongTermMemoryApis() throws Exception {
+        String userId = userId("user-structured-memory");
         String threadId = createThread(userId, "Structured Memory Thread");
 
         mockMvc.perform(get("/memory/profile").header("X-User-Id", userId))
@@ -321,64 +326,103 @@ class AgentFlowIntegrationTest {
                 .andExpect(jsonPath("$.displayName").value("Alex"))
                 .andExpect(jsonPath("$.content").value(org.hamcrest.Matchers.containsString("implementation-focused")));
 
-        MvcResult factResult = mockMvc.perform(post("/memory/facts")
+        MvcResult semanticResult = mockMvc.perform(post("/memory/long-term")
                         .header("X-User-Id", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "factType": "preference",
-                                  "title": "Output style",
-                                  "content": "Use concise bullet summaries",
+                                  "memoryType": "SEMANTIC",
+                                  "title": "Research Context",
+                                  "content": "The user is researching platform memory design.",
                                   "sourceThreadId": "%s",
                                   "sourceTaskId": "task-1"
                                 }
                                 """.formatted(threadId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.factType").value("preference"))
-                .andExpect(jsonPath("$.category").value("preference"))
-                .andExpect(jsonPath("$.fact").value("Use concise bullet summaries"))
+                .andExpect(jsonPath("$.memoryType").value("SEMANTIC"))
+                .andExpect(jsonPath("$.canonicalKey").value("semantic.research_topic.primary"))
                 .andExpect(jsonPath("$.sourceTaskId").value("task-1"))
                 .andReturn();
 
-        String memoryId = objectMapper.readTree(factResult.getResponse().getContentAsString()).path("memoryId").asText();
+        String memoryId = objectMapper.readTree(semanticResult.getResponse().getContentAsString()).path("memoryId").asText();
 
-        mockMvc.perform(get("/memory/facts").header("X-User-Id", userId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].memoryId").value(memoryId))
-                .andExpect(jsonPath("$[0].title").value("Output style"))
-                .andExpect(jsonPath("$[0].content").value("Use concise bullet summaries"))
-                .andExpect(jsonPath("$[0].sourceThreadId").value(threadId))
-                .andExpect(jsonPath("$[0].sourceTaskId").value("task-1"));
-
-        mockMvc.perform(put("/memory/facts/{memoryId}", memoryId)
+        mockMvc.perform(post("/memory/long-term")
                         .header("X-User-Id", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "factType": "preference",
-                                  "title": "Output style",
-                                  "content": "Prefer short implementation notes",
+                                  "memoryType": "SEMANTIC",
+                                  "title": "Research Topic",
+                                  "content": "The user is researching platform memory refactors.",
                                   "sourceThreadId": "%s",
                                   "sourceTaskId": "task-2"
                                 }
                                 """.formatted(threadId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").value("Prefer short implementation notes"))
-                .andExpect(jsonPath("$.fact").value("Prefer short implementation notes"))
-                .andExpect(jsonPath("$.sourceTaskId").value("task-2"));
+                .andExpect(jsonPath("$.memoryId").value(memoryId))
+                .andExpect(jsonPath("$.content").value("The user is researching platform memory refactors."));
 
-        mockMvc.perform(delete("/memory/facts/{memoryId}", memoryId).header("X-User-Id", userId))
+        mockMvc.perform(post("/memory/long-term")
+                        .header("X-User-Id", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memoryType": "PROCEDURAL",
+                                  "canonicalKey": "answer.style",
+                                  "title": "Answer style",
+                                  "content": "Lead with the conclusion and keep notes short.",
+                                  "valueJson": {
+                                    "answerStyle": "concise-first"
+                                  },
+                                  "sourceThreadId": "%s"
+                                }
+                                """.formatted(threadId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memoryType").value("PROCEDURAL"))
+                .andExpect(jsonPath("$.canonicalKey").value("procedure.answer_style"))
+                .andExpect(jsonPath("$.valueJson.answerStyle").value("concise-first"));
+
+        MvcResult memoriesResult = mockMvc.perform(get("/memory/long-term").header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode memories = objectMapper.readTree(memoriesResult.getResponse().getContentAsString());
+        assertThat(memories.toString()).contains(memoryId);
+        assertThat(memories.toString()).contains("semantic.research_topic.primary");
+
+        mockMvc.perform(put("/memory/long-term/{memoryId}", memoryId)
+                        .header("X-User-Id", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "memoryType": "SEMANTIC",
+                                  "canonicalKey": "semantic.research_topic.primary",
+                                  "title": "Research Topic",
+                                  "content": "Prefer short implementation notes",
+                                  "sourceThreadId": "%s",
+                                  "sourceTaskId": "task-3"
+                                }
+                                """.formatted(threadId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Prefer short implementation notes"))
+                .andExpect(jsonPath("$.sourceTaskId").value("task-3"));
+
+        mockMvc.perform(post("/memory/long-term/cleanup").header("X-User-Id", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processed").value(org.hamcrest.Matchers.greaterThanOrEqualTo(3)))
+                .andExpect(jsonPath("$.deleted").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)));
+
+        mockMvc.perform(delete("/memory/long-term/{memoryId}", memoryId).header("X-User-Id", userId))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/memory/facts").header("X-User-Id", userId))
+        mockMvc.perform(get("/memory/long-term").header("X-User-Id", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$[?(@.memoryId=='%s')]".formatted(memoryId)).isEmpty());
     }
 
     @Test
     void streamsRunFailedInsteadOfEscalatingSseErrors() throws Exception {
-        String userId = "user-c";
+        String userId = userId("user-c");
         String threadId = createThread(userId, "Failing Run Thread");
 
         MvcResult asyncResult = mockMvc.perform(post("/threads/{threadId}/messages", threadId)
@@ -478,6 +522,10 @@ class AgentFlowIntegrationTest {
 
         JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
         return json.get("threadId").asText();
+    }
+
+    private String userId(String prefix) {
+        return prefix + "-" + UUID.randomUUID();
     }
 
     @TestConfiguration
@@ -632,7 +680,7 @@ class AgentFlowIntegrationTest {
             public String runModelLoop(String providerId,
                                        AgentExecutionRequest request,
                                        String prompt,
-                                       java.util.List<com.xg.platform.tools.ToolDescriptor> availableTools,
+                                       java.util.List<com.xg.platform.tooling.domain.ToolDescriptor> availableTools,
                                        AgentOutputEmitter outputEmitter) {
                 return runTextTurn(providerId, null, prompt, request.message());
             }

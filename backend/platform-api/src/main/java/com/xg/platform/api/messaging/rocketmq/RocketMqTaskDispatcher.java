@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskDispatcher;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 
 public class RocketMqTaskDispatcher implements TaskDispatcher {

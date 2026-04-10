@@ -1,18 +1,19 @@
 package com.xg.platform.agent.core;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.xg.platform.tools.SkillAvailabilityStatus;
-import com.xg.platform.tools.SkillDefinition;
-import com.xg.platform.tools.SkillExecutionMode;
-import com.xg.platform.tools.SkillInvocation;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.skill.domain.SkillAvailabilityStatus;
+import com.xg.platform.skill.domain.SkillDefinition;
+import com.xg.platform.skill.domain.SkillExecutionMode;
+import com.xg.platform.skill.domain.SkillInvocation;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.skill.runtime.SkillRuntimeSupport;
 
 class SkillRuntimeSupportTest {
 

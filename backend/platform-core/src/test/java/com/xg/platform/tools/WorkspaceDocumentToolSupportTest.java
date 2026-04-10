@@ -4,17 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.artifact.RegisterArtifactCommand;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.workspace.RegisterArtifactCommand;
 import com.xg.platform.contracts.document.DocumentRecord;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
-import com.xg.platform.memory.ContextAssembler;
-import com.xg.platform.memory.DocumentChunk;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.document.application.ContextAssembler;
+import com.xg.platform.document.domain.DocumentChunk;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -24,6 +24,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.xg.platform.tooling.application.WorkspaceDocumentToolSupport;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
 
 class WorkspaceDocumentToolSupportTest {
 
@@ -228,7 +233,7 @@ class WorkspaceDocumentToolSupportTest {
 
     private Harness createHarness() {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryRuntimeSupport.InMemoryThreadRepository());
         String threadId = threadRuntimeService.createThread(USER_ID, WORKSPACE_ID, "Docs Thread").threadId();
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);

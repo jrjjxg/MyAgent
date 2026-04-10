@@ -1,9 +1,9 @@
 package com.xg.platform.agent.core.application;
 
 import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
-import com.xg.platform.runtime.LongTermMemoryExtractionRequest;
-import com.xg.platform.runtime.LongTermMemoryJobProcessor;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryExtractionRequest;
+import com.xg.platform.memory.port.LongTermMemoryJobProcessor;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
 
 public class DefaultLongTermMemoryJobProcessor implements LongTermMemoryJobProcessor {
 

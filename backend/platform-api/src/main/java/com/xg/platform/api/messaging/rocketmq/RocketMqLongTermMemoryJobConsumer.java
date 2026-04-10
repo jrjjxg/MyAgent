@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.LongTermMemoryExtractionRequest;
-import com.xg.platform.runtime.LongTermMemoryJobProcessor;
+import com.xg.platform.memory.port.LongTermMemoryExtractionRequest;
+import com.xg.platform.memory.port.LongTermMemoryJobProcessor;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

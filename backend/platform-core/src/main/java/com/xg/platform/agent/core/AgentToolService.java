@@ -1,8 +1,8 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
 
 import java.util.List;
 

@@ -3,10 +3,10 @@ package com.xg.platform.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.xg.platform.contracts.artifact.ArtifactRecord;
-import com.xg.platform.contracts.artifact.ArtifactType;
-import com.xg.platform.contracts.artifact.ArtifactVisibility;
-import com.xg.platform.contracts.artifact.RegisterArtifactCommand;
+import com.xg.platform.contracts.workspace.ArtifactRecord;
+import com.xg.platform.contracts.workspace.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactVisibility;
+import com.xg.platform.contracts.workspace.RegisterArtifactCommand;
 import com.xg.platform.contracts.document.DocumentRecord;
 import com.xg.platform.api.config.MybatisPersistenceConfig;
 import com.xg.platform.api.config.PersistenceConfig;
@@ -19,29 +19,31 @@ import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.MemoryExtractionJobStatus;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
 import com.xg.platform.contracts.memory.UpdateLongTermMemoryRequest;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.contracts.message.ResearchDraftStatus;
-import com.xg.platform.contracts.message.ResearchPlanStep;
-import com.xg.platform.contracts.message.RunEvent;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.contracts.task.TaskStatus;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.LongTermMemoryRepository;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
-import com.xg.platform.runtime.ThreadDeletionService;
-import com.xg.platform.runtime.ThreadRepository;
-import com.xg.platform.runtime.WorkspaceRepository;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.contracts.research.ResearchDraftStatus;
+import com.xg.platform.contracts.research.ResearchPlanStep;
+import com.xg.platform.contracts.shared.event.RunEvent;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.contracts.shared.task.TaskStatus;
+import com.xg.platform.memory.application.LongTermMemoryKeyRegistry;
+import com.xg.platform.memory.application.LongTermMemoryMaintenanceService;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
+import com.xg.platform.workspace.application.ThreadDeletionService;
+import com.xg.platform.workspace.port.ThreadRepository;
+import com.xg.platform.workspace.port.WorkspaceRepository;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import com.xg.platform.contracts.workspace.WorkspaceArea;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -604,59 +606,100 @@ class PersistenceRepositoryIntegrationTest {
     }
 
     @Test
-    void longTermMemorySupportsTrimmedCrudCaseInsensitiveLookupAndSoftDelete() {
+    void longTermMemoryUpsertsCanonicalKeysPreservesValueJsonAndSoftDelete() {
         String userId = nextId("user");
         String threadId = threadRepository.createThread(userId, createWorkspace(userId, "Long Term Memory Workspace"), "Long Term Memory Thread").threadId();
+        ObjectNode firstValue = objectMapper.createObjectNode().put("style", "concise");
+        ObjectNode updatedValue = objectMapper.createObjectNode().put("style", "concise-first");
+        ObjectNode procedureValue = objectMapper.createObjectNode().put("answerStyle", "lead-with-conclusion");
 
         LongTermMemoryRecord first = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
                 LongTermMemoryType.PROFILE,
-                "profile.output.style",
+                LongTermMemoryKeyRegistry.PROFILE_OUTPUT_STYLE,
                 "  Output Style  ",
                 "  Use concise bullet summaries  ",
+                firstValue,
                 threadId,
                 "message-a",
                 "task-a"
         ));
         pauseForOrdering();
 
-        LongTermMemoryRecord second = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
-                LongTermMemoryType.SEMANTIC,
-                "semantic.audience",
-                "Audience",
-                "Write for backend engineers",
+        LongTermMemoryRecord upsertedFirst = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
+                LongTermMemoryType.PROFILE,
+                "output.style",
+                "Output Style",
+                "Updated concise style",
+                updatedValue,
                 threadId,
                 "message-b",
                 "task-b"
         ));
         pauseForOrdering();
 
-        assertThat(longTermMemoryRepository.findActiveByTitle(userId, "output style"))
-                .map(LongTermMemoryRecord::memoryId)
-                .contains(first.memoryId());
-        assertThat(longTermMemoryRepository.findActiveByCanonicalKey(userId, LongTermMemoryType.PROFILE, "profile.output.style"))
-                .map(LongTermMemoryRecord::memoryId)
-                .contains(first.memoryId());
-
-        LongTermMemoryRecord updatedFirst = longTermMemoryRepository.update(userId, first.memoryId(), new UpdateLongTermMemoryRequest(
-                LongTermMemoryType.PROFILE,
-                "profile.output.style",
-                "   ",
-                "  Updated concise style  ",
+        LongTermMemoryRecord semantic = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
+                LongTermMemoryType.SEMANTIC,
+                "stock.monitoring.project",
+                "Stock Monitoring Project",
+                "Maintains a stock monitoring system project.",
+                null,
                 threadId,
                 "message-c",
                 "task-c"
         ));
+        pauseForOrdering();
+
+        LongTermMemoryRecord procedural = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
+                LongTermMemoryType.PROCEDURAL,
+                "answer.style",
+                "Answer style",
+                "Lead with the conclusion and keep implementation notes short.",
+                procedureValue,
+                threadId,
+                "message-d",
+                "task-d"
+        ));
+
+        assertThat(upsertedFirst.memoryId()).isEqualTo(first.memoryId());
+        assertThat(longTermMemoryRepository.findActiveByCanonicalKey(
+                userId,
+                LongTermMemoryType.PROFILE,
+                LongTermMemoryKeyRegistry.PROFILE_OUTPUT_STYLE
+        ))
+                .map(LongTermMemoryRecord::memoryId)
+                .contains(first.memoryId());
+        assertThat(longTermMemoryRepository.findActiveByCanonicalKey(
+                userId,
+                LongTermMemoryType.PROCEDURAL,
+                LongTermMemoryKeyRegistry.PROCEDURE_ANSWER_STYLE
+        ))
+                .map(LongTermMemoryRecord::memoryId)
+                .contains(procedural.memoryId());
+
+        LongTermMemoryRecord updatedFirst = longTermMemoryRepository.update(userId, first.memoryId(), new UpdateLongTermMemoryRequest(
+                LongTermMemoryType.PROFILE,
+                LongTermMemoryKeyRegistry.PROFILE_OUTPUT_STYLE,
+                "   ",
+                "  Final concise style  ",
+                updatedValue,
+                threadId,
+                "message-e",
+                "task-e"
+        ));
 
         assertThat(updatedFirst.memoryType()).isEqualTo(LongTermMemoryType.PROFILE);
-        assertThat(updatedFirst.canonicalKey()).isEqualTo("profile.output.style");
+        assertThat(updatedFirst.canonicalKey()).isEqualTo(LongTermMemoryKeyRegistry.PROFILE_OUTPUT_STYLE);
         assertThat(updatedFirst.title()).isEqualTo("Output Style");
-        assertThat(updatedFirst.content()).isEqualTo("Updated concise style");
-        assertThat(updatedFirst.sourceMessageId()).isEqualTo("message-c");
-        assertThat(updatedFirst.sourceTaskId()).isEqualTo("task-c");
+        assertThat(updatedFirst.content()).isEqualTo("Final concise style");
+        assertThat(updatedFirst.valueJson()).isEqualTo(updatedValue);
+        assertThat(updatedFirst.sourceMessageId()).isEqualTo("message-e");
+        assertThat(updatedFirst.sourceTaskId()).isEqualTo("task-e");
+        assertThat(semantic.canonicalKey()).isEqualTo("semantic.project.stock_monitoring");
+        assertThat(procedural.valueJson()).isEqualTo(procedureValue);
 
         assertThat(longTermMemoryRepository.listActive(userId))
                 .extracting(LongTermMemoryRecord::memoryId)
-                .containsExactly(first.memoryId(), second.memoryId());
+                .containsExactly(updatedFirst.memoryId(), procedural.memoryId(), semantic.memoryId());
 
         longTermMemoryRepository.delete(userId, first.memoryId());
 
@@ -665,7 +708,101 @@ class PersistenceRepositoryIntegrationTest {
         assertThat(deleted.orElseThrow().status()).isEqualTo(LongTermMemoryStatus.DELETED);
         assertThat(longTermMemoryRepository.listActive(userId))
                 .extracting(LongTermMemoryRecord::memoryId)
+                .containsExactly(procedural.memoryId(), semantic.memoryId());
+    }
+
+    @Test
+    void episodicLongTermMemoryUsesSourceMessageIdAsWriteIdentity() {
+        String userId = nextId("user");
+        String threadId = threadRepository.createThread(userId, createWorkspace(userId, "Episodic Memory Workspace"), "Episodic Memory Thread").threadId();
+
+        LongTermMemoryRecord first = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
+                LongTermMemoryType.EPISODIC,
+                "paper.analysis",
+                "Paper analysis",
+                "Analyzed the stacked LSTM paper.",
+                null,
+                threadId,
+                "message-episode-1",
+                null
+        ));
+
+        LongTermMemoryRecord second = longTermMemoryRepository.create(userId, new CreateLongTermMemoryRequest(
+                LongTermMemoryType.EPISODIC,
+                "paper.review",
+                "Paper review",
+                "Updated the paper analysis summary.",
+                null,
+                threadId,
+                "message-episode-1",
+                null
+        ));
+
+        assertThat(second.memoryId()).isEqualTo(first.memoryId());
+        assertThat(second.sourceMessageId()).isEqualTo("message-episode-1");
+        assertThat(second.canonicalKey()).isEqualTo("episode.paper.review.message.episode.1");
+        assertThat(longTermMemoryRepository.listActive(userId))
+                .extracting(LongTermMemoryRecord::memoryId)
                 .containsExactly(second.memoryId());
+    }
+
+    @Test
+    void longTermMemoryCleanupRewritesAliasesAndDeletesOlderDuplicates() {
+        String userId = nextId("user");
+        Instant older = Instant.parse("2026-01-04T00:00:00Z");
+        Instant newer = Instant.parse("2026-01-04T00:05:00Z");
+        String olderId = nextId("memory");
+        String newerId = nextId("memory");
+
+        jdbcTemplate.update(
+                """
+                        insert into long_term_memory (
+                            memory_id, user_id, memory_type, canonical_key, title, content, status, created_at, updated_at
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                olderId,
+                userId,
+                LongTermMemoryType.SEMANTIC.name(),
+                "research.context",
+                "Research Context",
+                "Old research context",
+                LongTermMemoryStatus.ACTIVE.name(),
+                Timestamp.from(older),
+                Timestamp.from(older)
+        );
+        jdbcTemplate.update(
+                """
+                        insert into long_term_memory (
+                            memory_id, user_id, memory_type, canonical_key, title, content, status, created_at, updated_at
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                newerId,
+                userId,
+                LongTermMemoryType.SEMANTIC.name(),
+                "research.topic",
+                "Research Topic",
+                "New research topic",
+                LongTermMemoryStatus.ACTIVE.name(),
+                Timestamp.from(newer),
+                Timestamp.from(newer)
+        );
+
+        LongTermMemoryMaintenanceService.CleanupResult result =
+                new LongTermMemoryMaintenanceService(longTermMemoryRepository).cleanupUserMemories(userId);
+
+        assertThat(result.processed()).isEqualTo(2);
+        assertThat(result.rewritten()).isEqualTo(1);
+        assertThat(result.deleted()).isEqualTo(1);
+        assertThat(longTermMemoryRepository.listActive(userId))
+                .singleElement()
+                .satisfies(memory -> {
+                    assertThat(memory.memoryId()).isEqualTo(newerId);
+                    assertThat(memory.canonicalKey()).isEqualTo("semantic.research_topic.primary");
+                    assertThat(memory.content()).isEqualTo("New research topic");
+                });
+        assertThat(longTermMemoryRepository.findById(userId, olderId))
+                .map(LongTermMemoryRecord::status)
+                .contains(LongTermMemoryStatus.DELETED);
     }
 
     @Test
@@ -722,7 +859,7 @@ class PersistenceRepositoryIntegrationTest {
                 Instant.parse("2026-01-05T00:00:01Z"),
                 objectMapper.createObjectNode().put("kind", "cleanup")
         ));
-        threadMemorySnapshotRepository.save(userId, new ThreadMemorySnapshotRecord(
+        threadMemorySnapshotRepository.save(userId, ThreadMemorySnapshotRecord.withoutActiveSkillIds(
                 threadId,
                 userId,
                 "Cleanup summary",
@@ -742,6 +879,7 @@ class PersistenceRepositoryIntegrationTest {
                 "semantic.cleanup.thread",
                 "Cleanup memory",
                 "Belongs to cleanup thread",
+                null,
                 threadId,
                 "message-cleanup",
                 null
@@ -751,6 +889,7 @@ class PersistenceRepositoryIntegrationTest {
                 "semantic.cleanup.survivor",
                 "Survivor memory",
                 "Belongs to survivor thread",
+                null,
                 survivorThreadId,
                 "message-survivor",
                 null
@@ -781,7 +920,7 @@ class PersistenceRepositoryIntegrationTest {
         threadDeletionService.deleteThread(userId, threadId);
 
         assertThat(threadRepository.listThreads(userId))
-                .extracting(com.xg.platform.contracts.thread.ThreadRecord::threadId)
+                .extracting(com.xg.platform.contracts.workspace.ThreadRecord::threadId)
                 .containsExactly(survivorThreadId);
         assertThat(messageRepository.listMessages(userId, threadId)).isEmpty();
         assertThat(researchDraftRepository.findActiveDraft(userId, threadId)).isEmpty();

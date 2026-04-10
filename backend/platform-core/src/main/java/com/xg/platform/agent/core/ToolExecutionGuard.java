@@ -1,7 +1,7 @@
 package com.xg.platform.agent.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.xg.platform.tools.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;

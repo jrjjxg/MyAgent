@@ -6,12 +6,13 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xg.platform.agent.core.application.ConversationMemoryService;
 import com.xg.platform.agent.core.application.ShortTermMemoryProjectionService;
-import com.xg.platform.agent.core.chat.ChatRouterService;
-import com.xg.platform.agent.core.interaction.InteractionGraphNodeService;
-import com.xg.platform.agent.core.research.execution.ResearchExecutionFlowService;
-import com.xg.platform.agent.core.research.execution.ResearchExecutionGraphNodeService;
+import com.xg.platform.conversation.application.ConversationCommandService;
+import com.xg.platform.conversation.application.ConversationRouterService;
+import com.xg.platform.conversation.runtime.ConversationGraphNodes;
+import com.xg.platform.research.application.ResearchWorkflowService;
+import com.xg.platform.research.runtime.ResearchExecutionGraphNodeService;
 import com.xg.platform.agent.core.research.execution.ResearchExecutionSupport;
-import com.xg.platform.agent.core.research.scoping.ResearchScopingFlowService;
+import com.xg.platform.research.application.ResearchDraftScopingService;
 import com.xg.platform.agent.core.shared.MemoryContextFormatter;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryLongTermMemoryRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryMessageRepository;
@@ -21,36 +22,38 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryRunEventRe
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryTaskRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadMemorySnapshotRepository;
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadRepository;
-import com.xg.platform.contracts.artifact.ArtifactType;
+import com.xg.platform.contracts.workspace.ArtifactType;
 import com.xg.platform.contracts.document.DocumentRecord;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.PostMessageRequest;
-import com.xg.platform.contracts.message.RunEvent;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.PostMessageRequest;
+import com.xg.platform.contracts.shared.event.RunEvent;
 import com.xg.platform.contracts.research.ReportCitation;
-import com.xg.platform.contracts.task.TaskKind;
-import com.xg.platform.memory.ContextAssembler;
-import com.xg.platform.memory.DocumentStore;
-import com.xg.platform.memory.NoOpThreadMemoryViewCache;
-import com.xg.platform.memory.SemanticChunker;
-import com.xg.platform.runtime.MessageRepository;
-import com.xg.platform.runtime.ResearchDraftRepository;
-import com.xg.platform.runtime.RunEventRepository;
-import com.xg.platform.runtime.TaskDispatchRequest;
-import com.xg.platform.runtime.TaskDispatcher;
-import com.xg.platform.runtime.TaskRepository;
-import com.xg.platform.runtime.ThreadRuntimeService;
-import com.xg.platform.graph.CheckpointConfiguration;
-import com.xg.platform.graph.GraphRuntimeFactory;
-import com.xg.platform.graph.RunEventConsumerRegistry;
-import com.xg.platform.tools.McpServerRegistry;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
-import com.xg.platform.tools.ToolGroup;
-import com.xg.platform.workspace.ArtifactService;
-import com.xg.platform.workspace.WorkspaceManager;
+import com.xg.platform.contracts.shared.task.TaskKind;
+import com.xg.platform.document.application.ContextAssembler;
+import com.xg.platform.document.application.DocumentStore;
+import com.xg.platform.memory.application.NoOpThreadMemoryViewCache;
+import com.xg.platform.document.application.SemanticChunker;
+import com.xg.platform.conversation.port.MessageRepository;
+import com.xg.platform.research.port.ResearchDraftRepository;
+import com.xg.platform.shared.port.RunEventRepository;
+import com.xg.platform.shared.runtime.async.PlatformTaskProcessor;
+import com.xg.platform.shared.runtime.async.TaskDispatchRequest;
+import com.xg.platform.shared.runtime.async.TaskDispatcher;
+import com.xg.platform.shared.port.TaskRepository;
+import com.xg.platform.workspace.application.ThreadService;
+import com.xg.platform.shared.runtime.graph.CheckpointConfiguration;
+import com.xg.platform.shared.runtime.graph.PlatformGraphRunner;
+import com.xg.platform.shared.runtime.graph.RunEventConsumerRegistry;
+import com.xg.platform.tooling.application.McpServerRegistry;
+import com.xg.platform.research.application.ResearchTaskExecutionService;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
+import com.xg.platform.workspace.application.ArtifactService;
+import com.xg.platform.workspace.application.WorkspaceManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -61,6 +64,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.xg.platform.conversation.runtime.ConversationGraphDefinition;
+import com.xg.platform.research.runtime.ResearchGraphDefinition;
 
 class AgentExecutionServiceTest {
 
@@ -75,7 +80,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Analyze this thread", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Analyze this thread", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
         List<MessageRecord> messages = harness.messageRepository().listMessages("user-1", harness.threadId());
@@ -106,7 +111,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Analyze this thread", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Analyze this thread", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -133,7 +138,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Analyze this thread", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Analyze this thread", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -168,7 +173,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("帮我查下天津明天的天气", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Help me check tomorrow's Tianjin weather", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -195,7 +200,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("please check this with a tool", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("please check this with a tool", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -221,7 +226,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("please use search", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("please use search", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -248,7 +253,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("please use search", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("please use search", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -280,7 +285,7 @@ class AgentExecutionServiceTest {
         assertThatThrownBy(() -> harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Start deep research", InteractionMode.DEEP_RESEARCH, "gemini"),
+                PostMessageRequest.of("Start deep research", InteractionMode.DEEP_RESEARCH, "gemini"),
                 event -> {
                 }
         )).isInstanceOf(IllegalArgumentException.class)
@@ -290,7 +295,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Still answer this chat", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Still answer this chat", InteractionMode.CHAT, "gemini"),
                 emitted::add
         );
 
@@ -301,7 +306,7 @@ class AgentExecutionServiceTest {
     @Test
     void routesIngestTasksToDocumentIngestService() {
         Harness harness = createHarness(tempDir);
-        TaskDispatchRequest request = new TaskDispatchRequest(
+        TaskDispatchRequest request = TaskDispatchRequest.of(
                 "user-1",
                 harness.threadId(),
                 "task-ingest",
@@ -348,7 +353,7 @@ class AgentExecutionServiceTest {
         harness.executionService().executeMessage(
                 "user-1",
                 harness.threadId(),
-                new PostMessageRequest("Help me check tomorrow's Tianjin weather", InteractionMode.CHAT, "gemini"),
+                PostMessageRequest.of("Help me check tomorrow's Tianjin weather", InteractionMode.CHAT, "gemini"),
                 event -> {
                 }
         );
@@ -364,7 +369,7 @@ class AgentExecutionServiceTest {
                                          AgentTurnExecutionSupport agentTurnExecutionSupport,
                                          AgentToolService agentToolService) {
         ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-        ThreadRuntimeService threadRuntimeService = new ThreadRuntimeService(new InMemoryThreadRepository());
+        ThreadService threadRuntimeService = new ThreadService(new InMemoryThreadRepository());
         String threadId = threadRuntimeService.createThread("user-1", "workspace-1", "Thread").threadId();
         WorkspaceManager workspaceManager = new WorkspaceManager(tempDir);
         ArtifactService artifactService = new ArtifactService(workspaceManager, threadRuntimeService, objectMapper);
@@ -377,7 +382,7 @@ class AgentExecutionServiceTest {
         var threadMemorySnapshotRepository = new InMemoryThreadMemorySnapshotRepository();
         var longTermMemoryRepository = new InMemoryLongTermMemoryRepository();
         var threadMemoryViewCache = new NoOpThreadMemoryViewCache();
-        var shortTermMemoryProjectionService = new ShortTermMemoryProjectionService(
+        var shortTermMemoryProjectionService = ShortTermMemoryProjectionService.withDefaultCompressor(
                 messageRepository,
                 threadMemorySnapshotRepository,
                 threadMemoryViewCache,
@@ -397,9 +402,9 @@ class AgentExecutionServiceTest {
         var memoryContextFormatter = new MemoryContextFormatter();
         TaskDispatcher taskDispatcher = request -> {
         };
-        var memoryEventPublisher = (com.xg.platform.runtime.MemoryEventPublisher) payload -> {
+        var memoryEventPublisher = (com.xg.platform.memory.port.MemoryEventPublisher) payload -> {
         };
-        ResearchScopingFlowService researchScopingFlowService = new ResearchScopingFlowService(
+        ResearchDraftScopingService researchScopingFlowService = new ResearchDraftScopingService(
                 threadRuntimeService,
                 messageRepository,
                 researchDraftRepository,
@@ -412,7 +417,7 @@ class AgentExecutionServiceTest {
         );
         var runEventConsumerRegistry = new RunEventConsumerRegistry();
         RecordingDocumentIngestService documentIngestService = new RecordingDocumentIngestService(documentStore);
-        var interactionGraphNodeService = new InteractionGraphNodeService(
+        var interactionGraphNodeService = new ConversationGraphNodes(
                 conversationMemoryService,
                 longTermMemoryRepository,
                 memoryContextFormatter,
@@ -427,7 +432,7 @@ class AgentExecutionServiceTest {
                 documentStore,
                 new ContextAssembler(),
                 documentIngestService,
-                new ChatRouterService(),
+                new ConversationRouterService(),
                 request -> "You are a helpful agent.",
                 agentTurnExecutionSupport,
                 agentToolService,
@@ -451,7 +456,7 @@ class AgentExecutionServiceTest {
                 conversationMemoryService,
                 longTermMemoryRepository,
                 memoryContextFormatter,
-                new ResearchExecutionFlowService(
+                new ResearchWorkflowService(
                         threadRuntimeService,
                         taskRepository,
                         runEventRepository,
@@ -470,27 +475,30 @@ class AgentExecutionServiceTest {
                 )
         );
         var checkpointConfiguration = new CheckpointConfiguration();
-        AgentExecutionService executionService = new AgentExecutionService(
+        ConversationCommandService conversationCommandService = new ConversationCommandService(
                 threadRuntimeService,
                 taskRepository,
                 runEventRepository,
-                memoryEventPublisher,
                 messageRepository,
-                researchDraftRepository,
-                researchTaskSnapshotRepository,
                 workspaceManager,
                 agentTurnExecutionSupport,
-                taskDispatcher,
                 documentIngestService,
-                new GraphRuntimeFactory(
-                        GraphRuntimeFactory.compileInteractionGraph(checkpointConfiguration, interactionGraphNodeService),
-                        GraphRuntimeFactory.compileResearchGraph(checkpointConfiguration, researchExecutionGraphNodeService),
+                new PlatformGraphRunner(
+                        ConversationGraphDefinition.compile(checkpointConfiguration, interactionGraphNodeService),
+                        ResearchGraphDefinition.compile(checkpointConfiguration, researchExecutionGraphNodeService),
                         runEventConsumerRegistry
                 ),
-                objectMapper,
                 false
         );
-        return new Harness(threadId, messageRepository, taskRepository, artifactService, executionService, documentIngestService, documentStore);
+        PlatformTaskProcessor taskProcessor = new PlatformTaskProcessor(
+                documentIngestService,
+                new ResearchTaskExecutionService(new PlatformGraphRunner(
+                        ConversationGraphDefinition.compile(checkpointConfiguration, interactionGraphNodeService),
+                        ResearchGraphDefinition.compile(checkpointConfiguration, researchExecutionGraphNodeService),
+                        runEventConsumerRegistry
+                ))
+        );
+        return new Harness(threadId, messageRepository, taskRepository, artifactService, new ExecutionFacade(conversationCommandService, taskProcessor), documentIngestService, documentStore);
     }
 
     private record Harness(
@@ -498,10 +506,27 @@ class AgentExecutionServiceTest {
             MessageRepository messageRepository,
             TaskRepository taskRepository,
             ArtifactService artifactService,
-            AgentExecutionService executionService,
+            ExecutionFacade executionService,
             RecordingDocumentIngestService documentIngestService,
             DocumentStore documentStore
     ) {
+    }
+
+    private record ExecutionFacade(
+            ConversationCommandService conversationCommandService,
+            PlatformTaskProcessor taskProcessor
+    ) {
+        private void executeMessage(String userId, String threadId, PostMessageRequest request, java.util.function.Consumer<RunEvent> runEventConsumer) {
+            conversationCommandService.executeMessage(userId, threadId, request, runEventConsumer);
+        }
+
+        private void prepareMessageExecution(String userId, String threadId, PostMessageRequest request) {
+            conversationCommandService.prepareMessageExecution(userId, threadId, request);
+        }
+
+        private void process(TaskDispatchRequest request) {
+            taskProcessor.process(request);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -529,7 +554,7 @@ class AgentExecutionServiceTest {
 
         private RecordingDocumentIngestService(DocumentStore documentStore) {
             super(null, null, null, null, null, null, null, null, null, request -> {
-            }, new SemanticChunker());
+            }, new SemanticChunker(), DocumentIngestService.Settings.defaults());
             this.documentStore = documentStore;
         }
 
@@ -575,7 +600,7 @@ class AgentExecutionServiceTest {
                                             String currentUserGraphMessageId,
                                             String prompt,
                                             List<ToolDescriptor> availableTools) {
-            return new AgentModelStep("hello world", List.of());
+            return AgentModelStep.of("hello world", List.of());
         }
     }
 
@@ -607,10 +632,10 @@ class AgentExecutionServiceTest {
                                             String prompt,
                                             List<ToolDescriptor> availableTools,
                                             AgentOutputEmitter outputEmitter) {
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "thinking..."));
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "thinking...", "content", "thinking..."));
-            return new AgentModelStep("hello world", List.of());
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "thinking..."));
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "thinking...", "content", "thinking..."));
+            return AgentModelStep.of("hello world", List.of());
         }
     }
 
@@ -645,7 +670,7 @@ class AgentExecutionServiceTest {
                                             String currentUserGraphMessageId,
                                             String prompt,
                                             List<ToolDescriptor> availableTools) {
-            return new AgentModelStep("hello world", List.of());
+            return AgentModelStep.of("hello world", List.of());
         }
 
         private int runTextTurnCalls() {
@@ -748,7 +773,7 @@ class AgentExecutionServiceTest {
                                             List<ToolDescriptor> availableTools) {
             boolean hasToolResponse = messages.stream().anyMatch(message -> message.type() == AgentGraphMessageType.TOOL);
             if (!hasToolResponse) {
-                return new AgentModelStep(
+                return AgentModelStep.of(
                         "",
                         List.of(new AgentGraphToolCall(
                                 "call-1",
@@ -790,7 +815,7 @@ class AgentExecutionServiceTest {
                                             List<ToolDescriptor> availableTools) {
             boolean hasToolResponse = messages.stream().anyMatch(message -> message.type() == AgentGraphMessageType.TOOL);
             if (!hasToolResponse) {
-                return new AgentModelStep(
+                return AgentModelStep.of(
                         "",
                         List.of(new AgentGraphToolCall(
                                 "call-missing",
@@ -799,7 +824,7 @@ class AgentExecutionServiceTest {
                         ))
                 );
             }
-            return new AgentModelStep("Recovered after tool failure", List.of());
+            return AgentModelStep.of("Recovered after tool failure", List.of());
         }
     }
 
@@ -840,7 +865,7 @@ class AgentExecutionServiceTest {
                                             List<ToolDescriptor> availableTools) {
             boolean hasToolResponse = messages.stream().anyMatch(message -> message.type() == AgentGraphMessageType.TOOL);
             if (!hasToolResponse) {
-                return new AgentModelStep(
+                return AgentModelStep.of(
                         "",
                         List.of(new AgentGraphToolCall(
                                 "call-recover",
@@ -849,7 +874,7 @@ class AgentExecutionServiceTest {
                         ))
                 );
             }
-            return new AgentModelStep("Recovered after tool failure", List.of());
+            return AgentModelStep.of("Recovered after tool failure", List.of());
         }
     }
 
@@ -886,10 +911,10 @@ class AgentExecutionServiceTest {
                                             AgentOutputEmitter outputEmitter) {
             boolean hasToolResponse = messages.stream().anyMatch(message -> message.type() == AgentGraphMessageType.TOOL);
             if (!hasToolResponse) {
-                outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
-                outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "Looking this up..."));
-                outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "Looking this up...", "content", "Looking this up..."));
-                return new AgentModelStep(
+                outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
+                outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "Looking this up..."));
+                outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "Looking this up...", "content", "Looking this up..."));
+                return AgentModelStep.of(
                         "",
                         List.of(new AgentGraphToolCall(
                                 "call-preview",
@@ -898,10 +923,10 @@ class AgentExecutionServiceTest {
                         ))
                 );
             }
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "Final answer"));
-            outputEmitter.emitEvent(com.xg.platform.contracts.message.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "Final answer", "content", "Final answer"));
-            return new AgentModelStep("Final answer", List.of());
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_STARTED, Map.of("providerId", providerId));
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_DELTA, Map.of("delta", "Final answer"));
+            outputEmitter.emitEvent(com.xg.platform.contracts.shared.event.RunEventType.AGENT_STEP_COMPLETED, Map.of("summary", "Final answer", "content", "Final answer"));
+            return AgentModelStep.of("Final answer", List.of());
         }
     }
 
@@ -912,7 +937,7 @@ class AgentExecutionServiceTest {
         }
 
         @Override
-        public ResearchPlan createResearchPlan(com.xg.platform.contracts.message.ApprovedResearchPlan approvedPlan, java.util.List<com.xg.platform.contracts.document.DocumentRecord> documents) {
+        public ResearchPlan createResearchPlan(com.xg.platform.contracts.research.ApprovedResearchPlan approvedPlan, java.util.List<com.xg.platform.contracts.document.DocumentRecord> documents) {
             return new ResearchPlan("summary", java.util.List.of());
         }
 
@@ -938,3 +963,4 @@ class AgentExecutionServiceTest {
         }
     }
 }
+

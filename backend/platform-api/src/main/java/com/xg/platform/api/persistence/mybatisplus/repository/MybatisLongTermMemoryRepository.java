@@ -9,7 +9,8 @@ import com.xg.platform.contracts.memory.LongTermMemoryRecord;
 import com.xg.platform.contracts.memory.LongTermMemoryStatus;
 import com.xg.platform.contracts.memory.LongTermMemoryType;
 import com.xg.platform.contracts.memory.UpdateLongTermMemoryRequest;
-import com.xg.platform.runtime.LongTermMemoryRepository;
+import com.xg.platform.memory.application.LongTermMemoryKeyRegistry;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -47,23 +48,10 @@ public class MybatisLongTermMemoryRepository implements LongTermMemoryRepository
     }
 
     @Override
-    public Optional<LongTermMemoryRecord> findActiveByTitle(String userId, String title) {
-        LongTermMemoryEntity entity = longTermMemoryMapper.selectOne(
-                Wrappers.<LongTermMemoryEntity>lambdaQuery()
-                        .eq(LongTermMemoryEntity::getUserId, userId)
-                        .eq(LongTermMemoryEntity::getStatus, LongTermMemoryStatus.ACTIVE.name())
-                        .apply("lower(title) = lower({0})", title == null ? "" : title.trim())
-                        .orderByDesc(LongTermMemoryEntity::getUpdatedAt)
-                        .last("limit 1")
-        );
-        return Optional.ofNullable(entity).map(LongTermMemoryPersistenceConvertor::toRecord);
-    }
-
-    @Override
     public Optional<LongTermMemoryRecord> findActiveByCanonicalKey(String userId,
                                                                    LongTermMemoryType memoryType,
                                                                    String canonicalKey) {
-        String normalizedKey = normalizeCanonicalKey(canonicalKey);
+        String normalizedKey = LongTermMemoryKeyRegistry.normalizeToken(canonicalKey);
         if (normalizedKey == null) {
             return Optional.empty();
         }
@@ -71,8 +59,8 @@ public class MybatisLongTermMemoryRepository implements LongTermMemoryRepository
                 Wrappers.<LongTermMemoryEntity>lambdaQuery()
                         .eq(LongTermMemoryEntity::getUserId, userId)
                         .eq(LongTermMemoryEntity::getStatus, LongTermMemoryStatus.ACTIVE.name())
-                        .eq(LongTermMemoryEntity::getMemoryType, memoryTypeOrDefault(memoryType).name())
-                        .apply("lower(canonical_key) = lower({0})", normalizedKey)
+                        .eq(LongTermMemoryEntity::getMemoryType, normalizeType(memoryType).name())
+                        .eq(LongTermMemoryEntity::getCanonicalKey, normalizedKey)
                         .orderByDesc(LongTermMemoryEntity::getUpdatedAt)
                         .last("limit 1")
         );
@@ -81,14 +69,36 @@ public class MybatisLongTermMemoryRepository implements LongTermMemoryRepository
 
     @Override
     public LongTermMemoryRecord create(String userId, CreateLongTermMemoryRequest request) {
+        LongTermMemoryKeyRegistry.NormalizedMemory normalizedMemory = LongTermMemoryKeyRegistry.normalizeForWrite(
+                request.memoryType(),
+                request.canonicalKey(),
+                request.title(),
+                request.sourceMessageId()
+        );
+        Optional<LongTermMemoryRecord> existing = normalizedMemory.memoryType() == LongTermMemoryType.EPISODIC
+                ? findActiveEpisodicBySourceMessageId(userId, request.sourceMessageId())
+                : findActiveByCanonicalKey(userId, normalizedMemory.memoryType(), normalizedMemory.canonicalKey());
+        if (existing.isPresent()) {
+            return update(userId, existing.orElseThrow().memoryId(), new UpdateLongTermMemoryRequest(
+                    normalizedMemory.memoryType(),
+                    normalizedMemory.canonicalKey(),
+                    request.title(),
+                    request.content(),
+                    request.valueJson(),
+                    request.sourceThreadId(),
+                    request.sourceMessageId(),
+                    request.sourceTaskId()
+            ));
+        }
         Instant now = Instant.now();
         LongTermMemoryRecord record = new LongTermMemoryRecord(
                 UUID.randomUUID().toString(),
                 userId,
-                memoryTypeOrDefault(request.memoryType()),
-                deriveCanonicalKey(request.memoryType(), request.canonicalKey(), request.title()),
+                normalizedMemory.memoryType(),
+                normalizedMemory.canonicalKey(),
                 trim(request.title()),
                 trim(request.content()),
+                request.valueJson(),
                 trim(request.sourceThreadId()),
                 trim(request.sourceMessageId()),
                 trim(request.sourceTaskId()),
@@ -104,38 +114,36 @@ public class MybatisLongTermMemoryRepository implements LongTermMemoryRepository
     public LongTermMemoryRecord update(String userId, String memoryId, UpdateLongTermMemoryRequest request) {
         LongTermMemoryRecord existing = findById(userId, memoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Long-term memory not found: " + memoryId));
+        LongTermMemoryType targetType = request.memoryType() == null ? existing.memoryType() : request.memoryType();
+        String targetTitle = trimOrDefault(request.title(), existing.title());
+        String targetSourceMessageId = trimOrDefault(request.sourceMessageId(), existing.sourceMessageId());
+        LongTermMemoryKeyRegistry.NormalizedMemory normalizedMemory = LongTermMemoryKeyRegistry.normalizeForWrite(
+                targetType,
+                request.canonicalKey() == null ? existing.canonicalKey() : request.canonicalKey(),
+                targetTitle,
+                targetSourceMessageId
+        );
+        if (normalizedMemory.memoryType() == LongTermMemoryType.EPISODIC) {
+            assertUniqueActiveEpisodeSourceMessage(userId, memoryId, targetSourceMessageId);
+        }
+        assertUniqueActiveKey(userId, memoryId, normalizedMemory.memoryType(), normalizedMemory.canonicalKey());
         LongTermMemoryRecord updated = new LongTermMemoryRecord(
                 existing.memoryId(),
                 existing.userId(),
-                request.memoryType() == null ? existing.memoryType() : request.memoryType(),
-                deriveCanonicalKey(
-                        request.memoryType() == null ? existing.memoryType() : request.memoryType(),
-                        trimOrDefault(request.canonicalKey(), existing.canonicalKey()),
-                        trimOrDefault(request.title(), existing.title())
-                ),
-                trimOrDefault(request.title(), existing.title()),
+                normalizedMemory.memoryType(),
+                normalizedMemory.canonicalKey(),
+                targetTitle,
                 trimOrDefault(request.content(), existing.content()),
+                request.valueJson() == null ? existing.valueJson() : request.valueJson(),
                 trimOrDefault(request.sourceThreadId(), existing.sourceThreadId()),
-                trimOrDefault(request.sourceMessageId(), existing.sourceMessageId()),
+                targetSourceMessageId,
                 trimOrDefault(request.sourceTaskId(), existing.sourceTaskId()),
                 existing.status(),
                 existing.createdAt(),
                 Instant.now()
         );
-        longTermMemoryMapper.update(
-                null,
-                Wrappers.<LongTermMemoryEntity>lambdaUpdate()
-                        .set(LongTermMemoryEntity::getMemoryType, updated.memoryType().name())
-                        .set(LongTermMemoryEntity::getCanonicalKey, updated.canonicalKey())
-                        .set(LongTermMemoryEntity::getTitle, updated.title())
-                        .set(LongTermMemoryEntity::getContent, updated.content())
-                        .set(LongTermMemoryEntity::getSourceThreadId, updated.sourceThreadId())
-                        .set(LongTermMemoryEntity::getSourceMessageId, updated.sourceMessageId())
-                        .set(LongTermMemoryEntity::getSourceTaskId, updated.sourceTaskId())
-                        .set(LongTermMemoryEntity::getUpdatedAt, updated.updatedAt())
-                        .eq(LongTermMemoryEntity::getUserId, userId)
-                        .eq(LongTermMemoryEntity::getMemoryId, memoryId)
-        );
+        LongTermMemoryEntity entity = LongTermMemoryPersistenceConvertor.toEntity(updated);
+        longTermMemoryMapper.updateById(entity);
         return updated;
     }
 
@@ -167,41 +175,64 @@ public class MybatisLongTermMemoryRepository implements LongTermMemoryRepository
         );
     }
 
+    private void assertUniqueActiveKey(String userId,
+                                       String memoryId,
+                                       LongTermMemoryType memoryType,
+                                       String canonicalKey) {
+        LongTermMemoryEntity duplicate = longTermMemoryMapper.selectOne(
+                Wrappers.<LongTermMemoryEntity>lambdaQuery()
+                        .eq(LongTermMemoryEntity::getUserId, userId)
+                        .eq(LongTermMemoryEntity::getStatus, LongTermMemoryStatus.ACTIVE.name())
+                        .eq(LongTermMemoryEntity::getMemoryType, memoryType.name())
+                        .eq(LongTermMemoryEntity::getCanonicalKey, canonicalKey)
+                        .ne(LongTermMemoryEntity::getMemoryId, memoryId)
+                        .last("limit 1")
+        );
+        if (duplicate != null) {
+            throw new IllegalArgumentException("Long-term memory key already exists: " + canonicalKey);
+        }
+    }
+
+    private void assertUniqueActiveEpisodeSourceMessage(String userId, String memoryId, String sourceMessageId) {
+        LongTermMemoryEntity duplicate = longTermMemoryMapper.selectOne(
+                Wrappers.<LongTermMemoryEntity>lambdaQuery()
+                        .eq(LongTermMemoryEntity::getUserId, userId)
+                        .eq(LongTermMemoryEntity::getStatus, LongTermMemoryStatus.ACTIVE.name())
+                        .eq(LongTermMemoryEntity::getMemoryType, LongTermMemoryType.EPISODIC.name())
+                        .eq(LongTermMemoryEntity::getSourceMessageId, sourceMessageId)
+                        .ne(LongTermMemoryEntity::getMemoryId, memoryId)
+                        .last("limit 1")
+        );
+        if (duplicate != null) {
+            throw new IllegalArgumentException("Episodic memory source already exists: " + sourceMessageId);
+        }
+    }
+
+    private Optional<LongTermMemoryRecord> findActiveEpisodicBySourceMessageId(String userId, String sourceMessageId) {
+        if (sourceMessageId == null || sourceMessageId.isBlank()) {
+            return Optional.empty();
+        }
+        LongTermMemoryEntity entity = longTermMemoryMapper.selectOne(
+                Wrappers.<LongTermMemoryEntity>lambdaQuery()
+                        .eq(LongTermMemoryEntity::getUserId, userId)
+                        .eq(LongTermMemoryEntity::getStatus, LongTermMemoryStatus.ACTIVE.name())
+                        .eq(LongTermMemoryEntity::getMemoryType, LongTermMemoryType.EPISODIC.name())
+                        .eq(LongTermMemoryEntity::getSourceMessageId, sourceMessageId.trim())
+                        .orderByDesc(LongTermMemoryEntity::getUpdatedAt)
+                        .last("limit 1")
+        );
+        return Optional.ofNullable(entity).map(LongTermMemoryPersistenceConvertor::toRecord);
+    }
+
+    private LongTermMemoryType normalizeType(LongTermMemoryType memoryType) {
+        return memoryType == null ? LongTermMemoryType.SEMANTIC : memoryType;
+    }
+
     private String trim(String value) {
         return value == null ? null : value.trim();
     }
 
     private String trimOrDefault(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value.trim();
-    }
-
-    private LongTermMemoryType memoryTypeOrDefault(LongTermMemoryType type) {
-        return type == null ? LongTermMemoryType.SEMANTIC : type;
-    }
-
-    private String deriveCanonicalKey(LongTermMemoryType type, String candidate, String title) {
-        String normalized = normalizeCanonicalKey(candidate);
-        if (normalized != null) {
-            return normalized;
-        }
-        String prefix = switch (memoryTypeOrDefault(type)) {
-            case PROFILE -> "profile";
-            case SEMANTIC -> "semantic";
-            case EPISODIC -> "episode";
-        };
-        String suffix = normalizeCanonicalKey(title);
-        return suffix == null ? prefix : prefix + "." + suffix;
-    }
-
-    private String normalizeCanonicalKey(String value) {
-        String trimmed = trim(value);
-        if (trimmed == null || trimmed.isBlank()) {
-            return null;
-        }
-        String normalized = trimmed.toLowerCase()
-                .replaceAll("[^a-z0-9]+", ".")
-                .replaceAll("\\.+", ".")
-                .replaceAll("^\\.|\\.$", "");
-        return normalized.isBlank() ? null : normalized;
     }
 }

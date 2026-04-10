@@ -7,15 +7,15 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryTaskReposi
 import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadMemorySnapshotRepository;
 import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.MemoryExtractionJobStatus;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.memory.NoOpThreadMemoryViewCache;
-import com.xg.platform.runtime.LongTermMemoryExtractionRequest;
-import com.xg.platform.runtime.LongTermMemoryJobDispatcher;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.MemoryEventPayload;
+import com.xg.platform.memory.application.NoOpThreadMemoryViewCache;
+import com.xg.platform.memory.port.LongTermMemoryExtractionRequest;
+import com.xg.platform.memory.port.LongTermMemoryJobDispatcher;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.MemoryEventPayload;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -361,6 +361,7 @@ class LongTermMemoryJobFlowTest {
                     new InMemoryMessageRepository(),
                     new InMemoryThreadMemorySnapshotRepository(),
                     new NoOpThreadMemoryViewCache(),
+                    SimpleConversationSummaryCompressor.defaults(),
                     new InMemoryResearchDraftRepository(),
                     new InMemoryTaskRepository(),
                     5

@@ -386,7 +386,8 @@ function parseSseChunk(chunk: string): { eventName: string | null; data: string 
 
 function shouldYieldAfterEvent(event: RunEvent) {
   return event.eventType !== "message.delta"
-    && event.eventType !== "agent.step.delta";
+    && event.eventType !== "agent.step.delta"
+    && event.eventType !== "model.thinking.delta";
 }
 
 async function yieldForRealtimePaint() {

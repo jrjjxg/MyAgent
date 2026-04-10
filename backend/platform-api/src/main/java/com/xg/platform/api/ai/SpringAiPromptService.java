@@ -3,11 +3,11 @@ package com.xg.platform.api.ai;
 import com.xg.platform.agent.core.AgentPromptRequest;
 import com.xg.platform.agent.core.AgentPromptService;
 import com.xg.platform.contracts.document.DocumentRecord;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.ThreadFileReference;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
 import com.xg.platform.contracts.skill.SkillDescriptor;
-import com.xg.platform.memory.RetrievedChunk;
-import com.xg.platform.tools.ToolDescriptor;
+import com.xg.platform.document.domain.RetrievedChunk;
+import com.xg.platform.tooling.domain.ToolDescriptor;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 
 import java.time.LocalDate;
@@ -244,9 +244,9 @@ public class SpringAiPromptService implements AgentPromptService {
     }
 
     private String renderDocsSection(AgentPromptRequest request) {
-        if (request.routeKind() != com.xg.platform.agent.core.chat.ChatRouteKind.DOCUMENT_QA) {
+        if (request.routeKind() != com.xg.platform.conversation.domain.ConversationRouteKind.DOCUMENT_QA) {
             String docTools = request.availableTools().stream()
-                    .filter(tool -> tool.group() == com.xg.platform.tools.ToolGroup.DOCUMENTS)
+                    .filter(tool -> tool.group() == com.xg.platform.tooling.domain.ToolGroup.DOCUMENTS)
                     .map(tool -> "- %s: %s".formatted(tool.name(), tool.description()))
                     .collect(Collectors.joining(System.lineSeparator()));
             if (docTools.isBlank()) {
@@ -297,7 +297,7 @@ public class SpringAiPromptService implements AgentPromptService {
             selectedScope = "- selected document ids were provided, but no matching documents are currently loaded";
         }
         String docTools = request.availableTools().stream()
-                .filter(tool -> tool.group() == com.xg.platform.tools.ToolGroup.DOCUMENTS)
+                .filter(tool -> tool.group() == com.xg.platform.tooling.domain.ToolGroup.DOCUMENTS)
                 .map(tool -> "- %s: %s".formatted(tool.name(), tool.description()))
                 .collect(Collectors.joining(System.lineSeparator()));
         if (docTools.isBlank()) {
@@ -447,12 +447,12 @@ public class SpringAiPromptService implements AgentPromptService {
         );
     }
 
-    private String renderLoadedSkill(com.xg.platform.tools.SkillDefinition skillDefinition) {
+    private String renderLoadedSkill(com.xg.platform.skill.domain.SkillDefinition skillDefinition) {
         String summary = skillDefinition.summary() == null ? "" : skillDefinition.summary().trim();
         String packageCommands = skillDefinition.packageCommands().isEmpty()
                 ? "none"
                 : escapeXml(skillDefinition.packageCommands().stream()
-                .map(com.xg.platform.tools.SkillPackageCommand::commandId)
+                .map(com.xg.platform.skill.domain.SkillPackageCommand::commandId)
                 .collect(Collectors.joining(", ")));
         String workflowSummary = summarizeWorkflow(skillDefinition);
         return """
@@ -474,7 +474,7 @@ public class SpringAiPromptService implements AgentPromptService {
         );
     }
 
-    private String summarizeWorkflow(com.xg.platform.tools.SkillDefinition skillDefinition) {
+    private String summarizeWorkflow(com.xg.platform.skill.domain.SkillDefinition skillDefinition) {
         List<String> steps = new ArrayList<>();
         boolean inCodeFence = false;
         for (String rawLine : skillDefinition.body().split("\\R")) {

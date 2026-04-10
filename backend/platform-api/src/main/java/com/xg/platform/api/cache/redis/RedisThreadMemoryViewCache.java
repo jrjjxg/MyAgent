@@ -3,7 +3,7 @@ package com.xg.platform.api.cache.redis;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.contracts.memory.CachedThreadMemoryRecord;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;

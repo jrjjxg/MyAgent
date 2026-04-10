@@ -1,5 +1,6 @@
 package com.xg.platform.contracts.validation;
 
+import com.xg.platform.contracts.shared.validation.PlatformIds;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

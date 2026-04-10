@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xg.platform.api.persistence.mybatisplus.entity.ThreadMemorySnapshotEntity;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
-import com.xg.platform.contracts.message.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRecord;
 
 import java.util.List;
 

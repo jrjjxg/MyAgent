@@ -7,10 +7,10 @@ import com.xg.platform.agent.core.test.InMemoryRuntimeSupport.InMemoryThreadMemo
 import com.xg.platform.contracts.memory.CachedThreadMemoryRecord;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
 import com.xg.platform.contracts.memory.ThreadMemoryView;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.runtime.ThreadMemoryViewCache;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.memory.port.ThreadMemoryViewCache;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

@@ -10,6 +10,10 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.xg.platform.document.application.ContextAssembler;
+import com.xg.platform.document.application.SemanticChunker;
+import com.xg.platform.document.domain.DocumentChunk;
+import com.xg.platform.document.domain.RetrievedChunk;
 
 class SemanticChunkerTest {
 

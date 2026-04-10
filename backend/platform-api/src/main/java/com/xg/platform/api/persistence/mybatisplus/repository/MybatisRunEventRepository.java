@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.entity.RunEventEntity;
 import com.xg.platform.api.persistence.mybatisplus.convertor.RunEventPersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.mapper.RunEventMapper;
-import com.xg.platform.contracts.message.RunEvent;
-import com.xg.platform.contracts.task.TaskRecord;
-import com.xg.platform.runtime.RunEventRepository;
+import com.xg.platform.contracts.shared.event.RunEvent;
+import com.xg.platform.contracts.shared.task.TaskRecord;
+import com.xg.platform.shared.port.RunEventRepository;
 
 import java.util.List;
 

@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xg.platform.agent.core.AgentGraphMessage;
 import com.xg.platform.agent.core.AgentGraphMessageType;
 import com.xg.platform.agent.core.AgentModelStep;
-import com.xg.platform.contracts.message.RunEventType;
-import com.xg.platform.contracts.message.ThreadFileReference;
+import com.xg.platform.contracts.shared.event.RunEventType;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -56,7 +56,7 @@ class SpringAiAgentTurnExecutionSupportTest {
     }
 
     @Test
-    void buffersVisibleGeminiOutputWhenToolsAreEnabled() {
+    void streamsVisibleGeminiOutputWhenToolsAreEnabled() {
         AgentTurnExecutionSupportTestSupport.TrackingChatModel chatModel =
                 new AgentTurnExecutionSupportTestSupport.TrackingChatModel(List.of("hello ", "world"), "hello world");
         SpringAiAgentTurnExecutionSupport support = createLegacySupport(chatModel);
@@ -67,11 +67,11 @@ class SpringAiAgentTurnExecutionSupportTest {
         assertThat(result).isEqualTo("hello world");
         assertThat(chatModel.streamCalls()).isEqualTo(1);
         assertThat(chatModel.callCalls()).isZero();
-        assertThat(emitted).containsExactly("hello world");
+        assertThat(emitted).containsExactly("hello ", "world");
     }
 
     @Test
-    void disablesThoughtsForGeminiWhenToolsAreEnabled() {
+    void enablesThoughtsForGeminiWhenToolsAreEnabled() {
         AgentTurnExecutionSupportTestSupport.TrackingChatModel chatModel =
                 new AgentTurnExecutionSupportTestSupport.TrackingChatModel(List.of("hello "), "hello");
         SpringAiAgentTurnExecutionSupport support = createLegacySupport(chatModel, "gemini-3-pro-preview");
@@ -80,11 +80,11 @@ class SpringAiAgentTurnExecutionSupportTest {
         });
 
         assertThat(chatModel.lastGoogleOptions()).isNotNull();
-        assertThat(chatModel.lastGoogleOptions().getIncludeThoughts()).isFalse();
+        assertThat(chatModel.lastGoogleOptions().getIncludeThoughts()).isTrue();
     }
 
     @Test
-    void streamsSingleStepAgentStepEventsBeforeReturningToolCalls() {
+    void keepsSingleStepVisiblePlanningOutOfProcessEventsWhenNoNativeThoughtsExist() {
         SpringAiAgentTurnExecutionSupport support = createLegacySupport(
                 new AgentTurnExecutionSupportTestSupport.ToolCallingChatModel("tool plan", "call-1", "web_search", "{\"query\":\"hi\"}")
         );
@@ -112,12 +112,7 @@ class SpringAiAgentTurnExecutionSupportTest {
         assertThat(step.content()).isEqualTo("tool plan");
         assertThat(step.toolCalls()).hasSize(1);
         assertThat(emitter.text()).isEmpty();
-        assertThat(emitter.eventTypes()).contains(
-                RunEventType.AGENT_STEP_STARTED,
-                RunEventType.AGENT_STEP_DELTA,
-                RunEventType.AGENT_STEP_COMPLETED
-        );
-        assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content")).isEqualTo("tool plan"));
+        assertThat(emitter.eventTypes()).isEmpty();
     }
 
     @Test
@@ -185,13 +180,10 @@ class SpringAiAgentTurnExecutionSupportTest {
                 RunEventType.MODEL_THINKING_STARTED,
                 RunEventType.MODEL_THINKING_DELTA,
                 RunEventType.MODEL_THINKING_COMPLETED,
-                RunEventType.MODEL_THINKING,
-                RunEventType.AGENT_STEP_STARTED,
-                RunEventType.AGENT_STEP_DELTA,
-                RunEventType.AGENT_STEP_COMPLETED
+                RunEventType.MODEL_THINKING
         );
         assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Plan first."));
-        assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Visible answer."));
+        assertThat(emitter.eventPayloads()).noneSatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Visible answer."));
     }
 
     @Test
@@ -235,9 +227,9 @@ class SpringAiAgentTurnExecutionSupportTest {
 
         assertThat(step.content()).isEqualTo("Final visible answer.");
         assertThat(step.assistantProperties()).containsKey("thoughtSignatures");
-        assertThat(emitter.eventTypes()).contains(RunEventType.MODEL_THINKING, RunEventType.AGENT_STEP_COMPLETED);
+        assertThat(emitter.eventTypes()).contains(RunEventType.MODEL_THINKING);
         assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Thought summary."));
-        assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Final visible answer."));
+        assertThat(emitter.eventPayloads()).noneSatisfy(payload -> assertThat(payload.get("content")).isEqualTo("Final visible answer."));
     }
 
     @Test
@@ -346,41 +338,37 @@ class SpringAiAgentTurnExecutionSupportTest {
     }
 
     @Test
-    void suppressesGeminiThoughtsFromVisibleToolEnabledOutput() {
-        String response = """
-                **Analyzing the User's Intent**
-
-                I'm currently focused on fully grasping the user's need.
-
-                Here is the answer the user should actually see.
-                """;
+    void keepsVisibleGeminiReasoningTextWhenProviderDoesNotExposeNativeThoughtParts() {
+        String response = String.join("\n",
+                "**Analyzing the User's Intent**",
+                "",
+                "I'm currently focused on fully grasping the user's need.",
+                "",
+                "Here is the answer the user should actually see."
+        );
         AgentTurnExecutionSupportTestSupport.TrackingChatModel chatModel =
                 new AgentTurnExecutionSupportTestSupport.TrackingChatModel(List.of(response), response);
         SpringAiAgentTurnExecutionSupport support = createLegacySupport(chatModel, "gemini-3-pro-preview");
-        List<String> emitted = new ArrayList<>();
+        AgentTurnExecutionSupportTestSupport.RecordingEmitter emitter =
+                new AgentTurnExecutionSupportTestSupport.RecordingEmitter();
 
-        String result = support.runModelLoop("gemini", sampleRequest(), "system prompt", List.of(sampleTool()), emitted::add);
+        String result = support.runModelLoop("gemini", sampleRequest(), "system prompt", List.of(sampleTool()), emitter);
 
-        assertThat(result).isEqualTo("Here is the answer the user should actually see.");
-        assertThat(String.join("", emitted)).doesNotContain("Analyzing the User's Intent");
-        assertThat(String.join("", emitted)).contains("Here is the answer the user should actually see.");
+        assertThat(result).isEqualTo(response);
+        assertThat(String.join("", emitter.text())).isEqualTo(response);
+        assertThat(emitter.eventTypes()).isEmpty();
     }
 
     @Test
-    void emitsHiddenModelThinkingAsSeparateEventForGeminiReasoningHeadings() {
-        String response = """
-                **Defining the Core Task**
-
-                I'm focusing on accurately interpreting the user's intent.
-
-                **Listing My Capabilities**
-
-                I'm now detailing my core capabilities for clarity.
-
-                Visible answer for the user.
-                """;
-        AgentTurnExecutionSupportTestSupport.TrackingChatModel chatModel =
-                new AgentTurnExecutionSupportTestSupport.TrackingChatModel(List.of(response), response);
+    void streamsNativeGeminiThoughtPartsDuringModelLoop() {
+        AgentTurnExecutionSupportTestSupport.StreamingResponseChatModel chatModel =
+                new AgentTurnExecutionSupportTestSupport.StreamingResponseChatModel(
+                        List.of(
+                                AgentTurnExecutionSupportTestSupport.response("Plan first.", Map.of("isThought", true)),
+                                AgentTurnExecutionSupportTestSupport.response("Visible answer for the user.", Map.of())
+                        ),
+                        AgentTurnExecutionSupportTestSupport.response("Visible answer for the user.")
+                );
         SpringAiAgentTurnExecutionSupport support = createLegacySupport(chatModel, "gemini-3-pro-preview");
         AgentTurnExecutionSupportTestSupport.RecordingEmitter emitter =
                 new AgentTurnExecutionSupportTestSupport.RecordingEmitter();
@@ -391,8 +379,7 @@ class SpringAiAgentTurnExecutionSupportTest {
         assertThat(String.join("", emitter.text())).isEqualTo("Visible answer for the user.");
         assertThat(emitter.eventTypes()).contains(RunEventType.MODEL_THINKING);
         assertThat(emitter.eventPayloads()).anySatisfy(payload -> assertThat(payload.get("content"))
-                .contains("Defining the Core Task")
-                .contains("Listing My Capabilities"));
+                .contains("Plan first."));
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.xg.platform.agent.core;
 
-import com.xg.platform.contracts.message.RunEventType;
+import com.xg.platform.contracts.shared.event.RunEventType;
 
 public interface AgentOutputEmitter {
 

@@ -7,12 +7,12 @@ import com.xg.platform.agent.core.AgentExecutionRequest;
 import com.xg.platform.agent.core.AgentModelStep;
 import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
-import com.xg.platform.contracts.message.RunEventType;
-import com.xg.platform.contracts.message.ThreadFileReference;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.contracts.shared.event.RunEventType;
+import com.xg.platform.contracts.conversation.ThreadFileReference;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -72,23 +72,22 @@ final class AgentTurnExecutionSupportTestSupport {
     }
 
     static AgentExecutionRequest sampleRequest(String providerId, List<ThreadFileReference> inputImages) {
-        return new AgentExecutionRequest(
-                "user-1",
-                "thread-1",
-                "run-1",
-                "Say hello",
-                null,
-                providerId,
-                List.of(),
-                List.of(),
-                "auto",
-                List.of(),
-                List.of(),
-                inputImages,
-                List.of(),
-                "",
-                ""
-        );
+        return AgentExecutionRequest.builder()
+                .userId("user-1")
+                .threadId("thread-1")
+                .runId("run-1")
+                .message("Say hello")
+                .providerId(providerId)
+                .requestedCapabilities(List.of())
+                .skillIds(List.of())
+                .skillSelectionMode("auto")
+                .artifacts(List.of())
+                .uploadedFiles(List.of())
+                .inputImages(inputImages)
+                .recentMessages(List.of())
+                .sessionSummary("")
+                .longTermMemory("")
+                .build();
     }
 
     static ToolDescriptor sampleTool() {

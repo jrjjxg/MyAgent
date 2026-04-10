@@ -5,7 +5,7 @@ import com.xg.platform.api.persistence.mybatisplus.convertor.ThreadMemorySnapsho
 import com.xg.platform.api.persistence.mybatisplus.entity.ThreadMemorySnapshotEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.ThreadMemorySnapshotMapper;
 import com.xg.platform.contracts.memory.ThreadMemorySnapshotRecord;
-import com.xg.platform.runtime.ThreadMemorySnapshotRepository;
+import com.xg.platform.memory.port.ThreadMemorySnapshotRepository;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import java.util.Optional;

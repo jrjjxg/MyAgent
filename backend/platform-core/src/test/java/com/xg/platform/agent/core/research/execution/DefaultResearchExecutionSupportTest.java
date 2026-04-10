@@ -7,13 +7,13 @@ import com.xg.platform.agent.core.AgentOutputEmitter;
 import com.xg.platform.agent.core.AgentToolService;
 import com.xg.platform.agent.core.AgentTurnExecutionSupport;
 import com.xg.platform.agent.core.ResearchUnit;
-import com.xg.platform.contracts.message.RunEventType;
-import com.xg.platform.tools.McpServerRegistry;
-import com.xg.platform.tools.SkillRegistry;
-import com.xg.platform.tools.ToolDescriptor;
-import com.xg.platform.tools.ToolExecutionRequest;
-import com.xg.platform.tools.ToolExecutionResult;
-import com.xg.platform.tools.ToolGroup;
+import com.xg.platform.contracts.shared.event.RunEventType;
+import com.xg.platform.tooling.application.McpServerRegistry;
+import com.xg.platform.skill.application.SkillRegistry;
+import com.xg.platform.tooling.domain.ToolDescriptor;
+import com.xg.platform.tooling.domain.ToolExecutionRequest;
+import com.xg.platform.tooling.domain.ToolExecutionResult;
+import com.xg.platform.tooling.domain.ToolGroup;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,27 +45,27 @@ class DefaultResearchExecutionSupportTest {
                 turnExecutionSupport,
                 objectMapper,
                 false,
-                false
+                false,
+                DefaultResearchExecutionSupport.Limits.defaults()
         );
 
         var result = support.executeResearchUnit(
                 "gemini",
-                new AgentExecutionRequest(
-                        "user-1",
-                        "thread-1",
-                        "run-1",
-                        "research topic",
-                        null,
-                        "gemini",
-                        List.of(),
-                        List.of(),
-                        "auto",
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        "",
-                        ""
-                ),
+                AgentExecutionRequest.builder()
+                        .userId("user-1")
+                        .threadId("thread-1")
+                        .runId("run-1")
+                        .message("research topic")
+                        .providerId("gemini")
+                        .requestedCapabilities(List.of())
+                        .skillIds(List.of())
+                        .skillSelectionMode("auto")
+                        .artifacts(List.of())
+                        .uploadedFiles(List.of())
+                        .recentMessages(List.of())
+                        .sessionSummary("")
+                        .longTermMemory("")
+                        .build(),
                 "Research topic",
                 List.of("Focus on grounded evidence"),
                 List.of(),

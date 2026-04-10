@@ -9,12 +9,13 @@ import com.xg.platform.contracts.memory.LongTermMemoryRecord;
 import com.xg.platform.contracts.memory.LongTermMemoryType;
 import com.xg.platform.contracts.memory.MemoryExtractionJobRecord;
 import com.xg.platform.contracts.memory.UpdateLongTermMemoryRequest;
-import com.xg.platform.contracts.message.InteractionMode;
-import com.xg.platform.contracts.message.MessageRecord;
-import com.xg.platform.contracts.message.MessageRole;
-import com.xg.platform.runtime.LongTermMemoryJobRepository;
-import com.xg.platform.runtime.LongTermMemoryRepository;
-import com.xg.platform.runtime.MessageRepository;
+import com.xg.platform.contracts.conversation.InteractionMode;
+import com.xg.platform.contracts.conversation.MessageRecord;
+import com.xg.platform.contracts.conversation.MessageRole;
+import com.xg.platform.memory.application.LongTermMemoryKeyRegistry;
+import com.xg.platform.memory.port.LongTermMemoryJobRepository;
+import com.xg.platform.memory.port.LongTermMemoryRepository;
+import com.xg.platform.conversation.port.MessageRepository;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -116,6 +117,9 @@ public class LongTermMemoryExtractionService {
                 - PROFILE: durable user profile, standing preferences, expertise level, stable project context.
                 - SEMANTIC: durable discrete facts about the user or their projects.
                 - EPISODIC: notable but more time-bound events worth archiving for later retrieval.
+                - PROCEDURAL: durable instructions about how the agent should respond or work.
+
+                %s
 
                 Merge rules:
                 - Prefer updating an existing memory when it overlaps semantically with new information.
@@ -130,7 +134,7 @@ public class LongTermMemoryExtractionService {
                   "upserts": [
                     {
                       "memoryId": "existing-memory-id-or-empty",
-                      "memoryType": "PROFILE|SEMANTIC|EPISODIC",
+                      "memoryType": "PROFILE|SEMANTIC|EPISODIC|PROCEDURAL",
                       "canonicalKey": "lowercase.dot.key",
                       "title": "short label",
                       "content": "concise memory statement"
@@ -138,7 +142,7 @@ public class LongTermMemoryExtractionService {
                   ],
                   "deleteMemoryIds": ["memory-id"]
                 }
-                """;
+                """.formatted(LongTermMemoryKeyRegistry.extractionKeyGuidance().trim());
     }
 
     private String renderUserMessage(List<LongTermMemoryRecord> existingMemories, List<MessageRecord> contextMessages) {
@@ -176,14 +180,14 @@ public class LongTermMemoryExtractionService {
             if (node.path("upserts").isArray()) {
                 for (JsonNode upsertNode : node.path("upserts")) {
                     LongTermMemoryType memoryType = memoryTypeOrDefault(textOrBlank(upsertNode.path("memoryType")));
-                    String canonicalKey = normalizeCanonicalKey(textOrBlank(upsertNode.path("canonicalKey")));
+                    String canonicalKey = textOrBlank(upsertNode.path("canonicalKey"));
                     String title = textOrBlank(upsertNode.path("title"));
                     String content = textOrBlank(upsertNode.path("content"));
                     if (!title.isBlank() && !content.isBlank()) {
                         upserts.add(new ExtractedMemoryUpsert(
                                 textOrBlank(upsertNode.path("memoryId")),
                                 memoryType,
-                                canonicalKey == null ? fallbackCanonicalKey(memoryType, title) : canonicalKey,
+                                canonicalKey,
                                 title,
                                 content
                         ));
@@ -220,7 +224,23 @@ public class LongTermMemoryExtractionService {
 
         Map<String, ExtractedMemoryUpsert> dedupedUpserts = new LinkedHashMap<>();
         for (ExtractedMemoryUpsert upsert : parsedExtraction.upserts()) {
-            dedupedUpserts.put(key(upsert.memoryType(), upsert.canonicalKey()), upsert);
+            try {
+                LongTermMemoryKeyRegistry.NormalizedMemory normalizedMemory = LongTermMemoryKeyRegistry.normalizeForWrite(
+                        upsert.memoryType(),
+                        upsert.canonicalKey(),
+                        upsert.title(),
+                        messageId
+                );
+                ExtractedMemoryUpsert normalizedUpsert = new ExtractedMemoryUpsert(
+                        upsert.memoryId(),
+                        normalizedMemory.memoryType(),
+                        normalizedMemory.canonicalKey(),
+                        upsert.title(),
+                        upsert.content()
+                );
+                dedupedUpserts.put(key(normalizedUpsert.memoryType(), normalizedUpsert.canonicalKey()), normalizedUpsert);
+            } catch (IllegalArgumentException ignored) {
+            }
         }
 
         int changed = 0;
@@ -233,6 +253,7 @@ public class LongTermMemoryExtractionService {
                         upsert.canonicalKey(),
                         upsert.title(),
                         upsert.content(),
+                        null,
                         threadId,
                         messageId,
                         null
@@ -251,6 +272,7 @@ public class LongTermMemoryExtractionService {
                         upsert.canonicalKey(),
                         upsert.title(),
                         upsert.content(),
+                        null,
                         threadId,
                         messageId,
                         null
@@ -336,28 +358,6 @@ public class LongTermMemoryExtractionService {
         } catch (IllegalArgumentException ignored) {
             return LongTermMemoryType.SEMANTIC;
         }
-    }
-
-    private String fallbackCanonicalKey(LongTermMemoryType memoryType, String title) {
-        String normalizedTitle = normalizeCanonicalKey(title);
-        String prefix = switch (memoryType) {
-            case PROFILE -> "profile";
-            case SEMANTIC -> "semantic";
-            case EPISODIC -> "episode";
-        };
-        return normalizedTitle == null ? prefix : prefix + "." + normalizedTitle;
-    }
-
-    private String normalizeCanonicalKey(String value) {
-        String trimmed = textOrBlank(value);
-        if (trimmed.isBlank()) {
-            return null;
-        }
-        String normalized = trimmed.toLowerCase()
-                .replaceAll("[^a-z0-9]+", ".")
-                .replaceAll("\\.+", ".")
-                .replaceAll("^\\.|\\.$", "");
-        return normalized.isBlank() ? null : normalized;
     }
 
     private String textOrBlank(JsonNode node) {

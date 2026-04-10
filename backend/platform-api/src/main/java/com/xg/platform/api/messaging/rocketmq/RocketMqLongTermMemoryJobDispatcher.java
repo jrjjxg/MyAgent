@@ -1,7 +1,7 @@
 package com.xg.platform.api.messaging.rocketmq;
 
-import com.xg.platform.runtime.LongTermMemoryExtractionRequest;
-import com.xg.platform.runtime.LongTermMemoryJobDispatcher;
+import com.xg.platform.memory.port.LongTermMemoryExtractionRequest;
+import com.xg.platform.memory.port.LongTermMemoryJobDispatcher;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 
 public class RocketMqLongTermMemoryJobDispatcher implements LongTermMemoryJobDispatcher {

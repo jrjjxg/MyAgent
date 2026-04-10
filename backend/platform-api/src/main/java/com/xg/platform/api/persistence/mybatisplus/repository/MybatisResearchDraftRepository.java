@@ -5,8 +5,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.xg.platform.api.persistence.mybatisplus.convertor.ResearchDraftPersistenceConvertor;
 import com.xg.platform.api.persistence.mybatisplus.entity.ResearchDraftEntity;
 import com.xg.platform.api.persistence.mybatisplus.mapper.ResearchDraftMapper;
-import com.xg.platform.contracts.message.ResearchDraftRecord;
-import com.xg.platform.runtime.ResearchDraftRepository;
+import com.xg.platform.contracts.research.ResearchDraftRecord;
+import com.xg.platform.research.port.ResearchDraftRepository;
 
 import java.util.Optional;
 

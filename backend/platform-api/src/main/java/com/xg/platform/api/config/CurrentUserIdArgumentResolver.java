@@ -1,6 +1,6 @@
 package com.xg.platform.api.config;
 
-import com.xg.platform.contracts.validation.PlatformIds;
+import com.xg.platform.contracts.shared.validation.PlatformIds;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;

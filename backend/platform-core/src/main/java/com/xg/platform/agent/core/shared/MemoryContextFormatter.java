@@ -20,6 +20,7 @@ public class MemoryContextFormatter {
         List<String> sections = new ArrayList<>();
         appendSection(sections, "Profile memories", memories, LongTermMemoryType.PROFILE);
         appendSection(sections, "Semantic memories", memories, LongTermMemoryType.SEMANTIC);
+        appendSection(sections, "Procedural memories", memories, LongTermMemoryType.PROCEDURAL);
         appendEpisodicSection(sections, memories, threadId);
         return sections.isEmpty() ? "- none" : String.join(System.lineSeparator() + System.lineSeparator(), sections);
     }
