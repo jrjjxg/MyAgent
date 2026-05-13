@@ -36,3 +36,7 @@ build/
 
 ### VS Code ###
 .vscode/
+suanfa/
+
+node_modules/
+web/node_modules/
